@@ -1,0 +1,40 @@
+.bg-color {
+    background-color: #232b2b;
+}
+
+.borders {
+    border-style: solid;
+    border-width: 1px;
+}
+
+.row-margin-reduce {
+    margin-bottom: 0px;
+}
+
+.top-bar-col {
+    height: 54px;
+}
+
+.left-div-header-div {
+    height: 23px;
+    background-color: #777777;
+    margin-bottom: 0px;
+    margin-top: 0px;
+}
+
+.left-div-header-element {
+    margin-top: 0px;
+    margin-bottom: 0px;
+    margin-left: 0px;
+    margin-right: 0px;
+    color: #ffffff;
+    font-weight: bold;
+}
+
+.left-div-link-table-element {
+    padding: 0px;
+    margin-bottom: 0px;
+    margin-top: 0px;
+    height: 180px;
+}
+
