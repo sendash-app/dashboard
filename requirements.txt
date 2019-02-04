@@ -5,3 +5,7 @@ dash-core-components==0.42.1
 plotly==3.5.0
 pandas==0.23.4
 pandas-datareader==0.7.0
+praw==6.1.0
+stem==1.7.1
+torrequest==0.1.0
+iexfinance==0.3.5

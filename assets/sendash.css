@@ -12,7 +12,7 @@
 }
 
 .top-bar-col {
-    height: 54px;
+    height: '54px';
 }
 
 .left-div-header-div {
@@ -36,5 +36,9 @@
     margin-bottom: 0px;
     margin-top: 0px;
     height: 180px;
+}
+
+.container {
+    height: 100vh;
 }
 

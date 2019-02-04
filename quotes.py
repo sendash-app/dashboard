@@ -28,7 +28,7 @@ def generate_pick_stock():
                     value='GOOG'
                 )
             ], style={'margin-top': '8px', 'margin-bottom': '8px'})
-        ], className="col s1 top-bar-col borders"
+        ], className="col s2 top-bar-col borders"
     )
     return html_script
 
