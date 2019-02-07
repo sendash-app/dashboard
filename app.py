@@ -5,16 +5,16 @@ from dash.dependencies import Input, Output
 import pandas_datareader.data as web
 import datetime
 import plotly.graph_objs as go
-
-#from plotly import tools
-#import plotly.plotly as py
 from headlines import generate_headline_bar, generate_link_table
 from quotes import generate_top_bar_logo, generate_pick_stock
 from stock_graph import generate_graph
-from iexfinance.stocks import Stock  # , get_historical_intraday
+from iexfinance.stocks import Stock
 from IPython.display import Image
+from krakenio import Client
 
-#from datetime import datetime, timedelta, date
+from PIL import Image
+import urllib.request
+
 
 app = dash.Dash('SENDASH')
 
@@ -49,7 +49,7 @@ app.layout = html.Div([
         generate_top_bar_logo(),
         generate_pick_stock(),
 
-        # 3rd Div
+        # QQQ indicator
         html.Div(
             [
                 html.Div([
@@ -64,6 +64,7 @@ app.layout = html.Div([
             ], className="col s2 top-bar-col borders"
         ),
 
+        # SPY indicator
         html.Div(
             [
                 html.Div([
@@ -78,7 +79,7 @@ app.layout = html.Div([
             ], className="col s2 top-bar-col borders"
         ),
 
-        # 4th Div
+        # Market Clock
         html.Div(
             [
                 html.P('1'),
@@ -151,107 +152,7 @@ app.layout = html.Div([
     [Input(component_id='input-stock-label', component_property='value')]
 )
 def update_graph(input_data):
-
-    # return generate_graph(df.index, df.Close, 380, input_data, 'stock-price-graph', 'line')
     return generate_graph(2019, 2, 6, input_data, 380)
-
-    # tdate = datetime(2019, 2, 6)
-    # tdate_neg1 = MarketDateAdj(tdate, -1, 'NYSE')
-
-    # tdata = get_historical_intraday(input_data, tdate, output_format='pandas')
-    # tdata_neg1 = get_historical_intraday(input_data, tdate_neg1, output_format='pandas')
-
-    # tdata.index = pd.DatetimeIndex(tdata.index)
-    # tdata_neg1.index = pd.DatetimeIndex(tdata_neg1.index)
-
-    # trace1 = go.Scatter(
-    #     x=tdata_neg1.index,
-    #     y=tdata_neg1['close'],
-    #     name='tdate_neg1 Close',
-    #     textposition='bottom center'
-    # )
-    # trace2 = go.Scatter(
-    #     x=tdata.index,
-    #     y=tdata['close'],
-    #     name='tdate Close',
-    #     textposition='bottom center'
-    # )
-
-    # plot_dict = {
-    #     tdate_neg1: tdata_neg1,
-    #     tdate: tdata
-    # }
-
-    # date_list = []
-
-    # for i, idate in enumerate(plot_dict):
-    #     date_list.append(idate)
-
-    # fig = tools.make_subplots(rows=1, cols=2, specs=[[{}, {}]], subplot_titles=(f'{input_data} | {date_list[0].strftime("%a, %d %b %y")}', f'{input_data} | {date_list[1].strftime("%a, %d %b %y")}'), shared_yaxes=True)
-
-    # fig.append_trace(trace1, 1, 1)
-    # fig.append_trace(trace2, 1, 2)
-
-    # fig['layout'].update(
-    #     height=380,
-    #     font=dict(color='#CCCCCC'),
-    #     margin=dict(l=35, r=35, b=35, t=45),
-    #     hovermode="closest",
-    #     plot_bgcolor="#191A1A",
-    #     paper_bgcolor="#777777",
-    #     legend=dict(font=dict(size=10), orientation='h'),
-    #     xaxis1=dict(
-    #         showgrid=True,
-    #         gridcolor='#777777',
-    #         tickformat='%H:%M'
-    #     ),
-    #     yaxis1=dict(
-    #         showgrid=True,
-    #         gridcolor='#777777',
-    #     ),
-    #     xaxis2=dict(
-    #         showgrid=True,
-    #         gridcolor='#777777',
-    #         tickformat='%H:%M'
-    #     ),
-    #     yaxis2=dict(
-    #         showgrid=True,
-    #         gridcolor='#777777',
-    #     )
-    # )
-
-    # return html.Div([
-    #     dcc.Graph(
-    #         figure=fig)
-    # ])
-
-    # dcc.Graph(
-    #         id=id_name,
-    #         figure={
-    #             'data': [
-    #                 {'x': x, 'y': y, 'type': graph_type, 'name': title},
-    #             ],
-    #             'layout': {
-    #                 'title': title,
-    #                 'height': height,
-    #                 'font': dict(color='#CCCCCC'),
-    #                 'titlefont': dict(color='#CCCCCC', size='14'),
-    #                 'margin': dict(l=35, r=35, b=35, t=45),
-    #                 'hovermode': "closest",
-    #                 'plot_bgcolor': "#191A1A",
-    #                 'paper_bgcolor': "#777777",
-    #                 'legend': dict(font=dict(size=10), orientation='h'),
-    #                 'xaxis': dict(
-    #                     showgrid=True,
-    #                     gridcolor='#777777',
-    #                 ),
-    #                 'yaxis': dict(
-    #                     showgrid=True,
-    #                     gridcolor='#777777',
-    #                 )
-    #             }
-    #         }
-    #     )
 
 
 @app.callback(
@@ -456,7 +357,41 @@ def update_SPY(input_data):
 def update_stock_logo(input_data):
     myStock = Stock(input_data)
     logo = myStock.get_logo()
-    return html.Img(src=logo['url'], style={'height': 'auto', 'width': 'auto', 'max-height': '115px', 'max-width': '115px'}, className="responsive-img")
+
+    image = Image.open(urllib.request.urlopen(logo['url']))
+    new_image = make_square(image)
+    print(new_image)
+    path = f'./assets/{input_data}.png'
+    new_image.save(path, format="PNG")
+    #api = Client('2f8f8da3544e9d704d0081a6ea2aa5fb', '55c4f243a2d9925204714ff7202c404c2653d779')
+
+    # data = {
+    #     'wait': True,
+    #     "resize": {
+    #         "width": 115,
+    #         "height": 115,
+    #         "strategy": "fill",
+    #         "background": "rgba(35, 43, 43, 1)"
+    #     }
+    # }
+
+    # result = api.url(logo['url'], data)
+
+    # if result.get('success'):
+    #     print(result.get('kraked_url'))
+    # else:
+    #     print(result.get('message'))
+
+    # return html.Img(src=result.get('kraked_url'), style={'height': 'auto', 'width': 'auto', 'max-height': '115px', 'max-width': '115px'}, className="responsive-img")
+    return html.Img(src=path, style={'height': 'auto', 'width': 'auto', 'max-height': '115px', 'max-width': '115px'}, className="responsive-img")
+
+
+def make_square(im, min_size=115, fill_color=(35, 43, 43, 1)):
+    x, y = im.size
+    size = max(min_size, x, y)
+    new_im = Image.new('RGBA', (size, size), fill_color)
+    new_im.paste(im, ((size - x) // 2, (size - y) // 2))
+    return new_im
 
 
 @app.server.route('/assets/<path:path>')
