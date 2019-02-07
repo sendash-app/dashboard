@@ -6,7 +6,7 @@ def generate_top_bar_logo():
     html_script = html.Div(
         [
             html.Img(
-                src='/assets/sendash_logo_v2.png', style={'max-height': '54px'}
+                src='/assets/sendash_logo_v2.png', style={'max-height': '54px'}, className="responsive-img"
             )
         ], className="col s1 top-bar-col borders", style={'padding': '0px'}
     )
@@ -27,7 +27,7 @@ def generate_pick_stock():
                     ],
                     value='GOOG'
                 )
-            ], style={'margin-top': '8px', 'margin-bottom': '8px'})
+            ], style={'margin-top': '10px', 'margin-bottom': '10px'})
         ], className="col s2 top-bar-col borders"
     )
     return html_script

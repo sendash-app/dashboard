@@ -38,6 +38,31 @@
     height: 180px;
 }
 
+.table-title {
+    min-width:150px;
+    color:#a9ebff;
+    vertical-align: top;
+    padding:0px;
+    padding-left:10px;
+}
+
+.table-text {
+    color:white;
+    vertical-align: top;
+    padding:0px;
+}
+
+.section-title {
+    color: white;
+    padding-left:10px;
+}
+
+.market-indicator-title {
+    color: white;
+    padding-left: 10px;
+    font-size:18px;
+}
+
 .container {
     height: 100vh;
 }
