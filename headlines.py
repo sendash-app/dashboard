@@ -34,6 +34,11 @@ def generate_link_table():
                     generate_table_row(),
                     generate_table_row(),
                     generate_table_row(),
+                    generate_table_row(),
+                    generate_table_row(),
+                    generate_table_row(),
+                    generate_table_row(),
+                    generate_table_row(),
                     # for i in range(min(len(dataframe), 10))
                 ]
             ),

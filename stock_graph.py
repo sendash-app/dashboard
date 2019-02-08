@@ -124,3 +124,38 @@ def generate_graph(year, month, day, symbol, height):
         dcc.Graph(
             figure=fig)
     ])
+
+
+def generate_sentiment_analysis_piechart():
+
+    fig = {
+        "data": [
+            {
+                "values": [58, 42],
+                "hoverinfo":"closest",
+                "hole": .4,
+                "type": "pie",
+                'marker': {'colors':
+                           ['#3399ff', '#a9ebff']
+                           }
+            },
+        ],
+        "layout": {
+            "height": 217,
+            "showlegend": False,
+            "margin": go.layout.Margin(
+                l=0,
+                r=0,
+                b=10,
+                t=10,
+            ),
+            'plot_bgcolor': "#191A1A",
+            'paper_bgcolor': "#232b2b",
+            'font': dict(color='#CCCCCC'),
+        }
+    }
+
+    return html.Div([
+        dcc.Graph(
+            figure=fig, config={'displayModeBar': False})
+    ])

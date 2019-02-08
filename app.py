@@ -7,7 +7,7 @@ import datetime
 import plotly.graph_objs as go
 from headlines import generate_headline_bar, generate_link_table
 from quotes import generate_top_bar_logo, generate_pick_stock
-from stock_graph import generate_graph, MarketDateAdj
+from stock_graph import generate_graph, MarketDateAdj, generate_sentiment_analysis_piechart
 from iexfinance.stocks import Stock
 from IPython.display import Image
 
@@ -19,6 +19,7 @@ import pandas_market_calendars as mcal
 import pytz
 import pandas as pd
 
+import plotly.plotly as py
 
 app = dash.Dash('SENDASH')
 
@@ -66,29 +67,16 @@ app.layout = html.Div([
         # QQQ indicator
         html.Div(
             [
-                html.Div([
-                    html.Strong("QQQ", className="market-indicator-title"),
-                ], className="row borders row-margin-reduce"),
-
-                html.Div([
-                    html.Div(id="output-QQQ"),
-                    dcc.Interval(id='input-QQQ', interval=6 * 10000, n_intervals=0),
-                ], className="row borders row-margin-reduce"),
-
+                html.Div(id="output-QQQ"),
+                dcc.Interval(id='input-QQQ', interval=6 * 10000, n_intervals=0),
             ], className="col s2 top-bar-col borders"
         ),
 
         # SPY indicator
         html.Div(
             [
-                html.Div([
-                    html.Strong("SPY", className="market-indicator-title"),
-                ], className="row borders row-margin-reduce"),
-
-                html.Div([
-                    html.Div(id="output-SPY"),
-                    dcc.Interval(id='input-SPY', interval=6 * 10000, n_intervals=0),
-                ], className="row borders row-margin-reduce"),
+                html.Div(id="output-SPY"),
+                dcc.Interval(id='input-SPY', interval=6 * 10000, n_intervals=0),
 
             ], className="col s2 top-bar-col borders"
         ),
@@ -136,11 +124,11 @@ app.layout = html.Div([
                 html.Div([
                     html.Div([
                         html.Div(id="output-stock-logo"),
-                    ], className="col s2 borders", style={'max-height': '120px'}),
+                    ], className="col s2 borders", style={'max-height': '120px', 'padding-top':'5px'}),
 
                     html.Div([
                         html.Div(id="output-key-stats"),
-                    ], className="col s10 borders", style={'min-height': '120px'})
+                    ], className="col s10 borders", style={'min-height': '120px', 'padding':'0px'})
                 ], className="row borders row-margin-reduce"),
 
                 html.Div([
@@ -150,19 +138,51 @@ app.layout = html.Div([
             ], className="col s6 borders"  # 230px
         ),
 
+
         html.Div(
             [
-                html.P('5'), html.P('5'), html.P('5'), html.P('5'), html.P('5'),
+                #html.P('5'), html.P('5'), html.P('5'), html.P('5'), html.P('5'),
+                html.Div([
+                    html.Strong("Sentiment Analysis Score", className="section-title"),
+                ], className="row row-margin-reduce left-div-header-div borders"),
+                html.Div([
+                    #html.P('5'), html.P('5'), html.P('5'), html.P('5'), html.P('5'),html.P('5'), html.P('5'), html.P('5'), html.P('5'),
+                    generate_sentiment_analysis_piechart()
+
+                ], className="row row-margin-reduce")
             ], className="col s2 borders"  # 230px
         ),
         html.Div(
             [
-                html.P('5'), html.P('5'), html.P('5'), html.P('5'), html.P('5'),
+                #html.P('5'), html.P('5'), html.P('5'), html.P('5'), html.P('5'),
+                html.Div([
+                    html.Strong("Probability Score", className="section-title"),
+                ], className="row row-margin-reduce left-div-header-div borders"),
+                html.Div([
+                    generate_sentiment_analysis_piechart()
+                    #html.P('5'), html.P('5'), html.P('5'), html.P('5'), html.P('5'),html.P('5'), html.P('5'), html.P('5'), html.P('5'),
+                ], className="row row-margin-reduce")
             ], className="col s2 borders"  # 230px
         ),
         html.Div(
             [
-                html.P('5'), html.P('5'), html.P('5'), html.P('5'), html.P('5'),
+                #html.P('5'), html.P('5'), html.P('5'), html.P('5'), html.P('5'),
+                html.Div([
+                    html.Div([
+                        html.Strong("Bid", className="section-title"),
+                    ], className="col s6"),
+                    html.Div([
+                        html.Strong("Ask", className="section-title"),
+                    ], className="col s6")
+                ], className="row row-margin-reduce left-div-header-div borders"),
+                html.Div([
+                    html.Div([
+                        html.P('5'), html.P('5'), html.P('5'), html.P('5'), html.P('5'),html.P('5'), html.P('5'), html.P('5'), html.P('5'),
+                    ], className="col s6 borders"),
+                    html.Div([
+                        html.P('5'), html.P('5'), html.P('5'), html.P('5'), html.P('5'),html.P('5'), html.P('5'), html.P('5'), html.P('5'),
+                    ], className="col s6 borders")
+                ], className="row row-margin-reduce")
             ], className="col s2 borders"  # 230px
         ),
     ], className="row row-margin-reduce"),
@@ -201,7 +221,9 @@ def update_companyName(input_data):
         value_list.append(info[DisplayDict[key]])
 
     return [
-        html.Strong("--- Company Description ---", className="section-title"),
+        html.Div([
+            html.Strong("--- Company Description ---", className="section-title"),
+        ], className="left-div-header-div"),
         html.Table([
             html.Tr([
                 html.Td([
@@ -239,25 +261,27 @@ def update_key_stats(input_data):
     myStock = Stock(input_data)
     stats = myStock.get_key_stats()
     DisplayDict = {
-        'Beta': 'beta',
-        'Dividend Rate': 'dividendRate',
-        'Shares Outstanding': 'sharesOutstanding',
-        'Ex-Dividend Date': 'exDividendDate',
-        'Price to Book': 'priceToBook',
-        'Week 52 High': 'week52high',
-        'Price to Sales': 'priceToSales',
-        'Week 52 Low': 'week52low'
+        'Beta': ('beta', '{:.2f}'),
+        'Dividend Rate': ('dividendRate', '{:.2f}'),
+        'Shares Outstanding': ('sharesOutstanding', '{:,.0f}'),
+        'Ex-Dividend Date': ('exDividendDate', '{}'),
+        'Price to Book': ('priceToBook', '{:.2f}'),
+        'Week 52 High': ('week52high', '{:.2f}'),
+        'Price to Sales': ('priceToSales', '{:.2f}'),
+        'Week 52 Low': ('week52low', '{:.2f}')
     }
 
     key_list = []
     value_list = []
 
     for key in DisplayDict:
-        key_list.append(f'{key}:')
-        value_list.append(stats[DisplayDict[key]])
+        key_list.append(f'{DisplayDict[key][0]}:')
+        value_list.append(DisplayDict[key][1].format(stats[DisplayDict[key][0]]))
 
     return [
-        html.Strong("--- Key Stats ---", className="section-title"),
+        html.Div([
+            html.Strong("--- Key Stats ---", className="section-title"),
+        ], className="left-div-header-div"),
         html.Table([
             html.Tr([
                 html.Td([
@@ -339,9 +363,18 @@ def update_symbol(intervals, input_data):
         source = '/assets/arrow-down.png'
         cols = '#da5657'
 
+    tstamp = quotes['latestUpdate']
+    dt = TimeConvert(datetime.fromtimestamp(tstamp/1e3),'EST')
+    text = f'Updated at: {dt.strftime("%d %b %y %H:%M %Z")}'
+
     return [
         html.Div([
-            html.Strong(input_data, className="market-indicator-title"),
+            html.Div([
+                html.Strong(input_data, className="market-indicator-title"),
+            ], className="col s3"),
+            html.Div([
+                html.Strong(text, style={'font-size':'9px', 'color':'white', 'float':'right', 'padding-top':'5px'})
+            ], className="col s9")
         ], className="row borders row-margin-reduce"),
 
         html.Div([
@@ -376,12 +409,29 @@ def update_QQQ(input_data):
         source = '/assets/arrow-down.png'
         cols = '#da5657'
 
+    tstamp = quotes['latestUpdate']
+    dt = TimeConvert(datetime.fromtimestamp(tstamp/1e3),'EST')
+    text = f'Updated at: {dt.strftime("%d %b %y %H:%M %Z")}'
+
     return [
-        html.Strong(quotes['latestPrice'], style={'color': 'white', 'padding-left': '10px', 'padding-right': '5px', 'font-size': '18px'}),
-        html.Img(
-            src=source, style={'max-height': '18px', 'padding-left': '15px', 'padding-right': '5px'}
-        ),
-        html.Strong('{0:.2f}%'.format(quotes['changePercent'] * 100), style={'color': cols, 'font-size': '18px', 'letter-spacing': '0px'}),
+        html.Div([
+            html.Div([
+                html.Strong("QQQ", className="market-indicator-title"),
+            ], className="col s3"),
+            html.Div([
+                html.Strong(text, style={'font-size':'9px', 'color':'white', 'float':'right', 'padding-top':'5px'})
+            ], className="col s9")
+        ], className="row borders row-margin-reduce"),
+
+        html.Div([
+            # html.Div(id="output-QQQ"),
+            html.Strong(quotes['latestPrice'], style={'color': 'white', 'padding-left': '10px', 'padding-right': '5px', 'font-size': '18px'}),
+            html.Img(
+                src=source, style={'max-height': '18px', 'padding-left': '15px', 'padding-right': '5px'}
+            ),
+            html.Strong('{0:.2f}%'.format(quotes['changePercent'] * 100), style={'color': cols, 'font-size': '18px', 'letter-spacing': '0px'}),
+            #dcc.Interval(id='input-QQQ', interval=6 * 10000, n_intervals=0),
+        ], className="row borders row-margin-reduce"),
     ]
 
 
@@ -404,12 +454,29 @@ def update_SPY(input_data):
         source = '/assets/arrow-down.png'
         cols = '#da5657'
 
+    tstamp = quotes['latestUpdate']
+    dt = TimeConvert(datetime.fromtimestamp(tstamp/1e3),'EST')
+    text = f'Updated at: {dt.strftime("%d %b %y %H:%M %Z")}'
+
     return [
-        html.Strong(quotes['latestPrice'], style={'color': 'white', 'padding-left': '10px', 'padding-right': '5px', 'font-size': '18px'}),
-        html.Img(
-            src=source, style={'max-height': '18px', 'padding-left': '15px', 'padding-right': '5px'}
-        ),
-        html.Strong('{0:.2f}%'.format(quotes['changePercent'] * 100), style={'color': cols, 'font-size': '18px', 'letter-spacing': '0px'}),
+        html.Div([
+            html.Div([
+                html.Strong("SPY", className="market-indicator-title"),
+            ], className="col s3"),
+            html.Div([
+                html.Strong(text, style={'font-size':'9px', 'color':'white', 'float':'right', 'padding-top':'5px'})
+            ], className="col s9")
+        ], className="row borders row-margin-reduce"),
+
+        html.Div([
+            # html.Div(id="output-QQQ"),
+            html.Strong(quotes['latestPrice'], style={'color': 'white', 'padding-left': '10px', 'padding-right': '5px', 'font-size': '18px'}),
+            html.Img(
+                src=source, style={'max-height': '18px', 'padding-left': '15px', 'padding-right': '5px'}
+            ),
+            html.Strong('{0:.2f}%'.format(quotes['changePercent'] * 100), style={'color': cols, 'font-size': '18px', 'letter-spacing': '0px'}),
+            #dcc.Interval(id='input-QQQ', interval=6 * 10000, n_intervals=0),
+        ], className="row borders row-margin-reduce"),
     ]
 
 
@@ -446,7 +513,7 @@ def update_stock_logo(input_data):
     #     print(result.get('message'))
 
     # return html.Img(src=result.get('kraked_url'), style={'height': 'auto', 'width': 'auto', 'max-height': '115px', 'max-width': '115px'}, className="responsive-img")
-    return html.Img(src=path, style={'height': 'auto', 'width': 'auto', 'max-height': '115px', 'max-width': '115px'}, className="responsive-img")
+    return html.Img(src=path, style={'height': 'auto', 'width': 'auto', 'max-height': '100px', 'max-width': '100px'}, className="responsive-img")
 
 @app.callback(
     Output(component_id='output-time-clock', component_property='children'),
@@ -464,7 +531,7 @@ def update_time_clock(input_data):
         nextAction = f'until {exchange} open'
         cols = '#da5657'
 
-    msg = f'{h}:{m}:{s}'
+    msg = f'{h}:{"{:02d}".format(m)}:{"{:02d}".format(s)}'
     if d > 0:
         msg = f'{d} days {msg}'
 
