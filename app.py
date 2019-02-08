@@ -629,6 +629,63 @@ def GetTimeToMktOpen( DateTimeObj, ExchangeName, debugmode = False):
         return { 'status': 'closed', 'd-h-m-s': days_hours_mins_secs(tdelta)}
 
 
+# @app.callback(
+#     Output(component_id='output-bid-ask, component_property='children'),
+#     [Input(component_id='input-bid-ask', component_property='n_intervals')]
+# )
+# def update_bid_ask(input_data):
+#     myStock = Stock(symbol)
+#     book = myStock.get_book()
+
+#     PrintBidAsk(book)
+#     return [
+
+
+
+
+def PrintBidAsk(quote_dict):
+    bidAsk_list = []
+    if not quote_dict['bids'] or not quote_dict['asks']:
+        data = quote_dict['quote']
+        for side in ['Bid', 'Ask']:
+            price = data[f'iex{side}Price']
+            size = data[f'iex{side}Size']
+
+            if price == 0 or size == 0:
+                price = '-'
+                size = '-'
+
+            if(side == 'Bid'):
+                bidAsk_list.append(f'{size} x {price}')
+            else:
+                bidAsk_list.append(f'{price} x {size}')
+
+            return bidAsk_list
+            #print(f'Last {side}: {price} x {size}')
+            #return f'Last {side}: {price} x {size}'
+
+        LastTimestamp = data['iexLastUpdated']
+        LastDT = datetime.fromtimestamp(LastTimestamp/1e3)
+        LastDTstr = f'{TimeConvert(LastDT, "EST").strftime("%d %b %y %H:%M %Z")}'
+        print(f'Updated at: {LastDTstr}')
+
+    else:   # Show Live Bid Ask
+        for side in ['bids', 'asks']:
+            price = quote_dict[side][0]['price']
+            size = quote_dict[side][0]['size']
+
+            if(side == 'bids'):
+                bidAsk_list.append(f'{size} x {price}')
+            else:
+                bidAsk_list.append(f'{price} x {size}')
+
+            return bidAsk_list
+
+            #print(f'{side}: {price} x {size}')
+            #return f'{side}: {price} x {size}'
+
+
+
 @app.server.route('/assets/<path:path>')
 def assets_file(path):
     assets_folder = os.path.join(os.getcwd(), 'assets')
