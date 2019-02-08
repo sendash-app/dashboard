@@ -20,12 +20,12 @@ def generate_pick_stock():
                 dcc.Dropdown(
                     id='input-stock-label',
                     options=[
-                        {'label': 'Google', 'value': 'GOOG'},
-                        {'label': 'Facebook', 'value': 'FB'},
-                        {'label': 'Amazon', 'value': 'AMZN'},
-                        {'label': 'Netflix', 'value': 'NFLX'},
+                        {'label': 'GOOGL | Alphabet Inc.', 'value': 'GOOGL'},
+                        {'label': 'FB | Facebook, Inc.', 'value': 'FB'},
+                        {'label': 'AMZN Amazon.com, Inc.', 'value': 'AMZN'},
+                        {'label': 'NFLX | Netflix, Inc.', 'value': 'NFLX'},
                     ],
-                    value='GOOG'
+                    value='GOOGL'
                 )
             ], style={'margin-top': '10px', 'margin-bottom': '10px'})
         ], className="col s2 top-bar-col borders"

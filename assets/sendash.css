@@ -29,13 +29,15 @@
     margin-right: 0px;
     color: #ffffff;
     font-weight: bold;
+    padding-left: 10px;
 }
 
 .left-div-link-table-element {
     padding: 0px;
     margin-bottom: 0px;
     margin-top: 0px;
-    height: 180px;
+    height: 380px;
+    padding-left:10px;
 }
 
 .table-title {

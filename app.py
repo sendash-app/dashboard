@@ -7,13 +7,17 @@ import datetime
 import plotly.graph_objs as go
 from headlines import generate_headline_bar, generate_link_table
 from quotes import generate_top_bar_logo, generate_pick_stock
-from stock_graph import generate_graph
+from stock_graph import generate_graph, MarketDateAdj
 from iexfinance.stocks import Stock
 from IPython.display import Image
-from krakenio import Client
 
 from PIL import Image
 import urllib.request
+
+from datetime import datetime, time
+import pandas_market_calendars as mcal
+import pytz
+import pandas as pd
 
 
 app = dash.Dash('SENDASH')
@@ -49,6 +53,16 @@ app.layout = html.Div([
         generate_top_bar_logo(),
         generate_pick_stock(),
 
+        # stock indicator
+        html.Div(
+            [
+                html.Div(id='output-symbol'),
+                #dcc.Input(id='output-ticker', type='hidden'),
+                dcc.Interval(id='input-symbol', interval=6 * 10000, n_intervals=0),
+
+            ], className="col s2 top-bar-col borders"
+        ),
+
         # QQQ indicator
         html.Div(
             [
@@ -82,8 +96,9 @@ app.layout = html.Div([
         # Market Clock
         html.Div(
             [
-                html.P('1'),
-            ], className="col s5 top-bar-col borders"
+                html.Div(id='output-time-clock'),
+                dcc.Interval(id='input-time-clock', interval=2 * 1000, n_intervals=0),
+            ], className="col s3 top-bar-col borders"
         ),
     ], className="row row-margin-reduce"),
 
@@ -95,8 +110,8 @@ app.layout = html.Div([
             [
                 generate_headline_bar("Headlines"),
                 generate_link_table(),
-                generate_headline_bar("Tweets"),
-                generate_link_table(),
+                # generate_headline_bar("Tweets"),
+                # generate_link_table(),
                 #], className="col s3 row-margin-reduce borders", style={'height': '406px'}
             ], className="col s3 row-margin-reduce borders"
         ),
@@ -132,13 +147,23 @@ app.layout = html.Div([
                     html.Div(id='output-get-company')
                 ], className="row borders row-margin-reduce"),
 
-            ], className="col s8 borders"  # 230px
+            ], className="col s6 borders"  # 230px
         ),
 
         html.Div(
             [
                 html.P('5'), html.P('5'), html.P('5'), html.P('5'), html.P('5'),
-            ], className="col s4 borders"  # 230px
+            ], className="col s2 borders"  # 230px
+        ),
+        html.Div(
+            [
+                html.P('5'), html.P('5'), html.P('5'), html.P('5'), html.P('5'),
+            ], className="col s2 borders"  # 230px
+        ),
+        html.Div(
+            [
+                html.P('5'), html.P('5'), html.P('5'), html.P('5'), html.P('5'),
+            ], className="col s2 borders"  # 230px
         ),
     ], className="row row-margin-reduce"),
 
@@ -295,6 +320,44 @@ def update_key_stats(input_data):
 
 
 @app.callback(
+    Output(component_id='output-symbol', component_property='children'),
+    [Input('input-symbol', 'n_intervals'),
+        Input('input-stock-label', 'value')]
+)
+def update_symbol(intervals, input_data):
+
+    batch = Stock(input_data)
+    quotes = batch.get_quote()
+
+    if(quotes['changePercent'] > 0):
+        source = '/assets/arrow-up.png'
+        cols = '#45df7e'
+    elif(quotes['changePercent'] == 0):
+        source = '/assets/substract.png'
+        cols = 'white'
+    else:
+        source = '/assets/arrow-down.png'
+        cols = '#da5657'
+
+    return [
+        html.Div([
+            html.Strong(input_data, className="market-indicator-title"),
+        ], className="row borders row-margin-reduce"),
+
+        html.Div([
+            # html.Div(id="output-QQQ"),
+            html.Strong(quotes['latestPrice'], style={'color': 'white', 'padding-left': '10px', 'padding-right': '5px', 'font-size': '18px'}),
+            html.Img(
+                src=source, style={'max-height': '18px', 'padding-left': '15px', 'padding-right': '5px'}
+            ),
+            html.Strong('{0:.2f}%'.format(quotes['changePercent'] * 100), style={'color': cols, 'font-size': '18px', 'letter-spacing': '0px'}),
+            #dcc.Interval(id='input-QQQ', interval=6 * 10000, n_intervals=0),
+        ], className="row borders row-margin-reduce"),
+
+    ]
+
+
+@app.callback(
     Output(component_id='output-QQQ', component_property='children'),
     [Input(component_id='input-QQQ', component_property='n_intervals')]
 )
@@ -362,7 +425,7 @@ def update_stock_logo(input_data):
     new_image = make_square(image)
     print(new_image)
     path = f'./assets/{input_data}.png'
-    new_image.save(path, format="PNG")
+    #new_image.save(path, format="PNG")
     #api = Client('2f8f8da3544e9d704d0081a6ea2aa5fb', '55c4f243a2d9925204714ff7202c404c2653d779')
 
     # data = {
@@ -385,6 +448,41 @@ def update_stock_logo(input_data):
     # return html.Img(src=result.get('kraked_url'), style={'height': 'auto', 'width': 'auto', 'max-height': '115px', 'max-width': '115px'}, className="responsive-img")
     return html.Img(src=path, style={'height': 'auto', 'width': 'auto', 'max-height': '115px', 'max-width': '115px'}, className="responsive-img")
 
+@app.callback(
+    Output(component_id='output-time-clock', component_property='children'),
+    [Input(component_id='input-time-clock', component_property='n_intervals')]
+)
+def update_time_clock(input_data):
+    exchange = 'NYSE'
+    MktTimeDict = GetTimeToMktOpen( datetime.now(pytz.utc), exchange)
+    d,h,m,s = MktTimeDict['d-h-m-s']
+
+    if MktTimeDict['status'] == 'open':
+        nextAction = f'until {exchange} close'
+        cols = '#45df7e'
+    else:
+        nextAction = f'until {exchange} open'
+        cols = '#da5657'
+
+    msg = f'{h}:{m}:{s}'
+    if d > 0:
+        msg = f'{d} days {msg}'
+
+    #print(f'{msg} {nextAction}')
+    return [
+        html.Div([
+            html.Div([
+                html.Strong('Status: ', style={'color':'white', 'font-size':'18px'})
+            ], className="col s3"),
+            html.Div([
+                html.Strong(MktTimeDict["status"], style={'color':cols, 'font-size':'18px'})
+            ], className="col s9"),
+        ], className="row borders row-margin-reduce"),
+        html.Div([
+            html.Strong(f'{msg} {nextAction}', style={'color':'white', 'font-size':'18px', 'padding-left':'10px'})
+        ], className="row borders row-margin-reduce")
+    ]
+
 
 def make_square(im, min_size=115, fill_color=(35, 43, 43, 1)):
     x, y = im.size
@@ -394,11 +492,80 @@ def make_square(im, min_size=115, fill_color=(35, 43, 43, 1)):
     return new_im
 
 
+def TimeConvert( inDateTime, OutZone):
+    from datetime import datetime
+    import pytz
+
+    #from_zone = pytz.utc
+    to_zone = pytz.timezone(OutZone)
+
+    return inDateTime.astimezone(to_zone)
+
+
+def IsMarketOpen(DateTimeObj, ExchangeName):
+    import pandas_market_calendars as mcal
+    from pandas.tseries.offsets import BDay
+
+    mkt = mcal.get_calendar(ExchangeName)
+    tDate = DateTimeObj.date()
+    dateRange = pd.bdate_range( start = tDate - BDay(1), end = tDate + BDay(1))
+    mkt_hours = mkt.schedule( start_date = dateRange[0], end_date = dateRange[-1])
+
+    return mkt.open_at_time( schedule = mkt_hours, timestamp = DateTimeObj, include_close = True)
+
+
+def days_hours_mins_secs( TimeDeltaObj):
+    '''
+    Note that in Python 3 // is for integer division
+    '''
+    td = TimeDeltaObj
+    hours, remainder = divmod( td.seconds, 3600)
+    minutes, seconds = divmod( remainder, 60)
+
+    return td.days, hours, minutes, seconds
+
+
+def GetTimeToMktOpen( DateTimeObj, ExchangeName, debugmode = False):
+    import pandas_market_calendars as mcal
+    from datetime import timedelta
+
+    # let's standardize time to UTC
+    dt_now = TimeConvert(DateTimeObj, 'UTC')
+    mkt = mcal.get_calendar(ExchangeName)
+    sch = mkt.schedule( start_date = dt_now.date(),
+                           end_date = MarketDateAdj(dt_now, 1, ExchangeName))
+
+    close_time = sch['market_close'][0]
+
+    # determine today's open or next day's open
+    l_which_open = [h > dt_now for h in sch['market_open']]
+    if l_which_open[0]:
+        open_time = sch['market_open'][0]
+    else:
+        open_time = sch['market_open'][1]
+
+    if IsMarketOpen(DateTimeObj, ExchangeName):
+        # Show Time to Market Close
+        tdelta = close_time.to_pydatetime() - dt_now
+
+        if debugmode :
+            print( f'--- Market is Open ---\nClose Time is {close_time}, Time Now is {dt_now}')
+
+        return { 'status': 'open', 'd-h-m-s': days_hours_mins_secs(tdelta)}
+    else:
+        # Show Time to Next Market Open
+        tdelta = open_time.to_pydatetime() - dt_now
+        if debugmode :
+            print( f'--- Market is Closed ---\nNext Open Time is {open_time}, Time Now is {dt_now}')
+            print( f'\n--- Market Open Time ---\n{sch["market_open"]}')
+
+        return { 'status': 'closed', 'd-h-m-s': days_hours_mins_secs(tdelta)}
+
+
 @app.server.route('/assets/<path:path>')
 def assets_file(path):
     assets_folder = os.path.join(os.getcwd(), 'assets')
     return send_from_directory(assets_folder, path)
-
 
 if __name__ == '__main__':
     app.run_server(debug=True)
