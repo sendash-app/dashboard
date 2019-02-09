@@ -27,6 +27,18 @@ def IsMarketOpen(DateTimeObj, ExchangeName):
     return mkt.open_at_time(schedule=mkt_hours, timestamp=DateTimeObj, include_close=True)
 
 
+def IsMarketOpen_pd(DateTimeObj, ExchangeName):
+    import pandas_market_calendars as mcal
+    from pandas.tseries.offsets import BDay
+
+    mkt = mcal.get_calendar(ExchangeName)
+    tDate = DateTimeObj.date()
+    dateRange = pd.bdate_range(start=tDate - BDay(1), end=tDate + BDay(1))
+    mkt_hours = mkt.schedule(start_date=dateRange[0], end_date=dateRange[-1])
+
+    return mkt.open_at_time(schedule=mkt_hours, timestamp=pd.Timestamp(DateTimeObj, tz='America/New_York'), include_close=True)
+
+
 def days_hours_mins_secs(TimeDeltaObj):
     '''
     Note that in Python 3 // is for integer division

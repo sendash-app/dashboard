@@ -7,10 +7,10 @@ import datetime as dateT
 import plotly.graph_objs as go
 from headlines import generate_headline_bar, generate_link_table
 from quotes import generate_top_bar_logo, generate_pick_stock
-from stock_graph import generate_graph, generate_sentiment_analysis_piechart
+from stock_graph import generate_graph, generate_sentiment_analysis_piechart, generate_graph_now
 from iexfinance.stocks import Stock
 #from IPython.display import Image
-from time_handling import TimeConvert, IsMarketOpen, days_hours_mins_secs, MarketDateAdj, GetTimeToMktOpen
+from time_handling import TimeConvert, IsMarketOpen, days_hours_mins_secs, MarketDateAdj, GetTimeToMktOpen, IsMarketOpen_pd
 from convert_image_to_square import make_square
 from bid_ask import PrintBidAsk
 
@@ -110,7 +110,9 @@ app.layout = html.Div([
         # Right Panel
         html.Div(
             [
-                dcc.Input(id='input', value=dateT.date.today(), type='Date', max=dateT.date.today(), style={'color':'white'}),
+                #dcc.Input(id='input-date', value=dateT.datetime.today(), type='datetime-local', max=dateT.datetime.today(), style={'color':'white'}),
+                dcc.Input(id='input-date', value=dateT.datetime.today().date(), type='date', max=dateT.date.today(), style={'color':'white'}),
+
                 html.Div(children=[
                     html.Div(id='output-stock-price-graph')
                 ]),
@@ -216,10 +218,33 @@ app.layout = html.Div([
 
 @app.callback(
     Output(component_id='output-stock-price-graph', component_property='children'),
-    [Input(component_id='input-stock-label', component_property='value')]
+    [Input('input-stock-label', 'value'),
+    Input('input-date', 'value')]
 )
-def update_graph(input_data):
-    return generate_graph(2019, 2, 6, input_data, 380)
+def update_graph(input_data, input_date):
+
+
+    #print(input_date)
+    DateTimeObj = datetime.strptime(input_date, "%Y-%m-%d") + dateT.timedelta(hours=9, minutes=30)
+    #print(type(input_date))
+    ExchangeName = 'NYSE'
+    #DateTimeObj = datetime.strptime(input_date, '%d/%m/%YT%H:%M %S')
+    #print(DateTimeObj.date())
+    #print(dateT.date.today())
+    marketOpenStatus = IsMarketOpen_pd(DateTimeObj, ExchangeName)
+    #print(marketOpenStatus)
+    if(marketOpenStatus == False and DateTimeObj.date() == dateT.date.today()):
+        getNextDate = MarketDateAdj(DateTimeObj, 1, ExchangeName)
+        #print(getNextDate.date())
+        result = getNextDate
+        return generate_graph_now(result, input_data, 380)
+    elif(marketOpenStatus == False and DateTimeObj.date() != dateT.date.today()):
+        getNextDate = MarketDateAdj(DateTimeObj, 1, ExchangeName)
+        result = getNextDate
+        return generate_graph(result, input_data, 380)
+    else:
+        result = DateTimeObj
+        return generate_graph(result, input_data, 380)
 
 
 @app.callback(
@@ -541,6 +566,8 @@ def update_stock_logo(input_data):
     Output(component_id='output-time-clock', component_property='children'),
     [Input(component_id='input-time-clock', component_property='n_intervals')]
 )
+
+
 def update_time_clock(input_data):
     exchange = 'NYSE'
     MktTimeDict = GetTimeToMktOpen( datetime.now(pytz.utc), exchange)
