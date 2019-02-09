@@ -3,21 +3,24 @@ import dash_html_components as html
 import dash_core_components as dcc
 from dash.dependencies import Input, Output
 import pandas_datareader.data as web
-import datetime
+import datetime as dateT
 import plotly.graph_objs as go
 from headlines import generate_headline_bar, generate_link_table
 from quotes import generate_top_bar_logo, generate_pick_stock
-from stock_graph import generate_graph, MarketDateAdj, generate_sentiment_analysis_piechart
+from stock_graph import generate_graph, generate_sentiment_analysis_piechart
 from iexfinance.stocks import Stock
-from IPython.display import Image
+#from IPython.display import Image
+from time_handling import TimeConvert, IsMarketOpen, days_hours_mins_secs, MarketDateAdj, GetTimeToMktOpen
+from convert_image_to_square import make_square
+from bid_ask import PrintBidAsk
 
 from PIL import Image
 import urllib.request
 
-from datetime import datetime, time
-import pandas_market_calendars as mcal
+from datetime import datetime#, time
+# import pandas_market_calendars as mcal
 import pytz
-import pandas as pd
+# import pandas as pd
 
 import plotly.plotly as py
 
@@ -107,6 +110,7 @@ app.layout = html.Div([
         # Right Panel
         html.Div(
             [
+                dcc.Input(id='input', value=dateT.date.today(), type='Date', max=dateT.date.today(), style={'color':'white'}),
                 html.Div(children=[
                     html.Div(id='output-stock-price-graph')
                 ]),
@@ -154,37 +158,55 @@ app.layout = html.Div([
         ),
         html.Div(
             [
-                #html.P('5'), html.P('5'), html.P('5'), html.P('5'), html.P('5'),
                 html.Div([
-                    html.Strong("Probability Score", className="section-title"),
-                ], className="row row-margin-reduce left-div-header-div borders"),
+                    html.Div([
+                        html.Div([
+                            html.Strong("Bid", className="section-title"),
+                        ], className="col s6 borders"),
+                        html.Div([
+                            html.Strong("Ask", className="section-title"),
+                        ], className="col s6 borders")
+                    ], className="row row-margin-reduce left-div-header-div borders", style={'margin-left':'0px', 'margin-right': '0px'}),
+                    html.Div([
+                        html.Div(id='output-bid-ask'),
+                        dcc.Interval(id='input-bid-ask', interval=10 * 1000, n_intervals=0),
+                    ], className="row row-margin-reduce"),
+                ], className="row borders row-margin-reduce"),
                 html.Div([
-                    generate_sentiment_analysis_piechart()
-                    #html.P('5'), html.P('5'), html.P('5'), html.P('5'), html.P('5'),html.P('5'), html.P('5'), html.P('5'), html.P('5'),
-                ], className="row row-margin-reduce")
-            ], className="col s2 borders"  # 230px
+                    html.Div([
+                        html.Strong("Probability Score", className="section-title"),
+                    ], className="row row-margin-reduce left-div-header-div borders", style={'margin-left':'0px', 'margin-right': '0px'}),
+                    html.Div([
+                        #generate_sentiment_analysis_piechart()
+                        #html.P('5'), html.P('5'), html.P('5'), html.P('5'), html.P('5'),html.P('5'), html.P('5'), html.P('5'), html.P('5'),
+                    ], className="row row-margin-reduce")
+                ], className="row borders row-margin-reduce")
+
+            ], className="col s4 borders"  # 230px
         ),
-        html.Div(
-            [
-                #html.P('5'), html.P('5'), html.P('5'), html.P('5'), html.P('5'),
-                html.Div([
-                    html.Div([
-                        html.Strong("Bid", className="section-title"),
-                    ], className="col s6"),
-                    html.Div([
-                        html.Strong("Ask", className="section-title"),
-                    ], className="col s6")
-                ], className="row row-margin-reduce left-div-header-div borders"),
-                html.Div([
-                    html.Div([
-                        html.P('5'), html.P('5'), html.P('5'), html.P('5'), html.P('5'),html.P('5'), html.P('5'), html.P('5'), html.P('5'),
-                    ], className="col s6 borders"),
-                    html.Div([
-                        html.P('5'), html.P('5'), html.P('5'), html.P('5'), html.P('5'),html.P('5'), html.P('5'), html.P('5'), html.P('5'),
-                    ], className="col s6 borders")
-                ], className="row row-margin-reduce")
-            ], className="col s2 borders"  # 230px
-        ),
+        # html.Div(
+        #     [
+        #         #html.P('5'), html.P('5'), html.P('5'), html.P('5'), html.P('5'),
+        #         html.Div([
+        #             html.Div([
+        #                 html.Strong("Bid", className="section-title"),
+        #             ], className="col s6"),
+        #             html.Div([
+        #                 html.Strong("Ask", className="section-title"),
+        #             ], className="col s6")
+        #         ], className="row row-margin-reduce left-div-header-div borders"),
+        #         html.Div([
+        #             html.Div([
+        #                 # html.P('5'), html.P('5'), html.P('5'), html.P('5'), html.P('5'),html.P('5'), html.P('5'), html.P('5'), html.P('5'),
+        #                 html.Div(id='output-bid-ask'),
+        #                 dcc.Interval(id='input-bid-ask', interval=30 * 1000, n_intervals=0),
+        #             ], className="col s6 borders"),
+        #             html.Div([
+        #                 html.P('5'), html.P('5'), html.P('5'), html.P('5'), html.P('5'),html.P('5'), html.P('5'), html.P('5'), html.P('5'),
+        #             ], className="col s6 borders")
+        #         ], className="row row-margin-reduce")
+        #     ], className="col s2 borders"  # 230px
+        # ),
     ], className="row row-margin-reduce"),
 
 ], className="container bg-color", style={'width': '100%', 'max-width': 50000})
@@ -249,7 +271,7 @@ def update_companyName(input_data):
                     value_list[2]
                 ], className="table-text"),
             ]),
-        ])
+        ], style={'height':'150px'})
     ]
 
 
@@ -551,139 +573,63 @@ def update_time_clock(input_data):
     ]
 
 
-def make_square(im, min_size=115, fill_color=(35, 43, 43, 1)):
-    x, y = im.size
-    size = max(min_size, x, y)
-    new_im = Image.new('RGBA', (size, size), fill_color)
-    new_im.paste(im, ((size - x) // 2, (size - y) // 2))
-    return new_im
+@app.callback(
+    Output(component_id='output-bid-ask', component_property='children'),
+    [Input('input-bid-ask', 'n_intervals'),
+        Input('input-stock-label', 'value')]
+)
+def update_bid_ask(interval, input_data):
+    myStock = Stock(input_data)
+    book = myStock.get_book()
 
+    bid, ask, lastUpdate = PrintBidAsk(book)
+    # print("bid key")
+    # print(list(bid.keys())[0])
+    # print("bid value")
+    # print(list(bid.values())[0])
+    # print("ask key")
+    # print(list(bid.keys())[0])
+    # print("ask value")
+    # print(list(bid.values())[0])
+    #print(ask)
+    return [
+        html.Div([
+            html.Div([
+                html.Div([
+                    html.Strong(list(bid.keys())[0], style={'color':'white'}),
+                    #html.Strong("-", style={'color':'white'}),
+                ], className="col s5", style={'text-align':'center', 'padding':'8px 0px'}),
+                html.Div([
+                    html.Strong("x", style={'color':'white'}),
+                ], className="col s2", style={'text-align':'center', 'padding':'8px 0px'}),
+                html.Div([
+                    html.Strong(list(bid.values())[0], style={'color':'white', 'font-size':'25px'}),
+                    #html.Strong("-", style={'color':'white', 'font-size':'25px'}),
 
-def TimeConvert( inDateTime, OutZone):
-    from datetime import datetime
-    import pytz
+                ], className="col s5", style={'text-align':'center', 'padding':'0px'}),
 
-    #from_zone = pytz.utc
-    to_zone = pytz.timezone(OutZone)
+            ], className="col s6 borders", style={'float':'center', 'padding':'10px 0px'}),
+            html.Div([
+                html.Div([
+                    html.Strong(list(ask.values())[0], style={'color':'white', 'font-size':'25px'}),
+                    #html.Strong("-", style={'color':'white', 'font-size':'25px'}),
+                ], className="col s5", style={'text-align':'center', 'padding':'0px'}),
+                html.Div([
+                    html.Strong("x", style={'color':'white'}),
+                ], className="col s2", style={'text-align':'center', 'padding':'8px 0px'}),
+                html.Div([
+                    html.Strong(list(ask.keys())[0], style={'color':'white'}),
+                    #html.Strong("-", style={'color':'white'}),
 
-    return inDateTime.astimezone(to_zone)
+                ], className="col s5", style={'text-align':'center', 'padding':'8px 0px'}),
 
+            ], className="col s6 borders", style={'float':'center', 'padding':'10px 0px'}),
+        ], className="row row-margin-reduce borders", style={'margin':'0px'}),
+        html.Div([
+            html.P(lastUpdate, style={'color':'white', 'padding-left':'15px'})
 
-def IsMarketOpen(DateTimeObj, ExchangeName):
-    import pandas_market_calendars as mcal
-    from pandas.tseries.offsets import BDay
-
-    mkt = mcal.get_calendar(ExchangeName)
-    tDate = DateTimeObj.date()
-    dateRange = pd.bdate_range( start = tDate - BDay(1), end = tDate + BDay(1))
-    mkt_hours = mkt.schedule( start_date = dateRange[0], end_date = dateRange[-1])
-
-    return mkt.open_at_time( schedule = mkt_hours, timestamp = DateTimeObj, include_close = True)
-
-
-def days_hours_mins_secs( TimeDeltaObj):
-    '''
-    Note that in Python 3 // is for integer division
-    '''
-    td = TimeDeltaObj
-    hours, remainder = divmod( td.seconds, 3600)
-    minutes, seconds = divmod( remainder, 60)
-
-    return td.days, hours, minutes, seconds
-
-
-def GetTimeToMktOpen( DateTimeObj, ExchangeName, debugmode = False):
-    import pandas_market_calendars as mcal
-    from datetime import timedelta
-
-    # let's standardize time to UTC
-    dt_now = TimeConvert(DateTimeObj, 'UTC')
-    mkt = mcal.get_calendar(ExchangeName)
-    sch = mkt.schedule( start_date = dt_now.date(),
-                           end_date = MarketDateAdj(dt_now, 1, ExchangeName))
-
-    close_time = sch['market_close'][0]
-
-    # determine today's open or next day's open
-    l_which_open = [h > dt_now for h in sch['market_open']]
-    if l_which_open[0]:
-        open_time = sch['market_open'][0]
-    else:
-        open_time = sch['market_open'][1]
-
-    if IsMarketOpen(DateTimeObj, ExchangeName):
-        # Show Time to Market Close
-        tdelta = close_time.to_pydatetime() - dt_now
-
-        if debugmode :
-            print( f'--- Market is Open ---\nClose Time is {close_time}, Time Now is {dt_now}')
-
-        return { 'status': 'open', 'd-h-m-s': days_hours_mins_secs(tdelta)}
-    else:
-        # Show Time to Next Market Open
-        tdelta = open_time.to_pydatetime() - dt_now
-        if debugmode :
-            print( f'--- Market is Closed ---\nNext Open Time is {open_time}, Time Now is {dt_now}')
-            print( f'\n--- Market Open Time ---\n{sch["market_open"]}')
-
-        return { 'status': 'closed', 'd-h-m-s': days_hours_mins_secs(tdelta)}
-
-
-# @app.callback(
-#     Output(component_id='output-bid-ask, component_property='children'),
-#     [Input(component_id='input-bid-ask', component_property='n_intervals')]
-# )
-# def update_bid_ask(input_data):
-#     myStock = Stock(symbol)
-#     book = myStock.get_book()
-
-#     PrintBidAsk(book)
-#     return [
-
-
-
-
-def PrintBidAsk(quote_dict):
-    bidAsk_list = []
-    if not quote_dict['bids'] or not quote_dict['asks']:
-        data = quote_dict['quote']
-        for side in ['Bid', 'Ask']:
-            price = data[f'iex{side}Price']
-            size = data[f'iex{side}Size']
-
-            if price == 0 or size == 0:
-                price = '-'
-                size = '-'
-
-            if(side == 'Bid'):
-                bidAsk_list.append(f'{size} x {price}')
-            else:
-                bidAsk_list.append(f'{price} x {size}')
-
-            return bidAsk_list
-            #print(f'Last {side}: {price} x {size}')
-            #return f'Last {side}: {price} x {size}'
-
-        LastTimestamp = data['iexLastUpdated']
-        LastDT = datetime.fromtimestamp(LastTimestamp/1e3)
-        LastDTstr = f'{TimeConvert(LastDT, "EST").strftime("%d %b %y %H:%M %Z")}'
-        print(f'Updated at: {LastDTstr}')
-
-    else:   # Show Live Bid Ask
-        for side in ['bids', 'asks']:
-            price = quote_dict[side][0]['price']
-            size = quote_dict[side][0]['size']
-
-            if(side == 'bids'):
-                bidAsk_list.append(f'{size} x {price}')
-            else:
-                bidAsk_list.append(f'{price} x {size}')
-
-            return bidAsk_list
-
-            #print(f'{side}: {price} x {size}')
-            #return f'{side}: {price} x {size}'
-
+        ], className="row row-margin-reduce borders", style={'margin':'0px'}),
+    ]
 
 
 @app.server.route('/assets/<path:path>')
@@ -692,4 +638,4 @@ def assets_file(path):
     return send_from_directory(assets_folder, path)
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=True, processes=4)
