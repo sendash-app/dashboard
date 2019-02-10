@@ -41,7 +41,7 @@ import numpy as np
 
 def generate_graph(input_date, symbol, height):
     #tdate = datetime(2019, 2, 6)
-    print(input_date)
+    #print(input_date)
     tdate = datetime(input_date.year, input_date.month, input_date.day)
     tdate_neg1 = MarketDateAdj(tdate, -1, 'NYSE')
 
@@ -116,7 +116,7 @@ def generate_graph(input_date, symbol, height):
 def generate_graph_now(input_date, symbol, height):
     #tdate = datetime(2019, 2, 6)
 
-    print(input_date)
+    #print(input_date)
     tdate = datetime(input_date.year, input_date.month, input_date.day)
     tdate_neg1 = MarketDateAdj(tdate, -1, 'NYSE')
 

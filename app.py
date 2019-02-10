@@ -222,8 +222,6 @@ app.layout = html.Div([
     Input('input-date', 'value')]
 )
 def update_graph(input_data, input_date):
-
-
     #print(input_date)
     DateTimeObj = datetime.strptime(input_date, "%Y-%m-%d") + dateT.timedelta(hours=9, minutes=30)
     #print(type(input_date))
@@ -232,16 +230,28 @@ def update_graph(input_data, input_date):
     #print(DateTimeObj.date())
     #print(dateT.date.today())
     marketOpenStatus = IsMarketOpen_pd(DateTimeObj, ExchangeName)
-    #print(marketOpenStatus)
+    print(marketOpenStatus)
+
+    previous_date = DateTimeObj - dateT.timedelta(days=1)
+
+    previous_date_Open_status = IsMarketOpen_pd(previous_date, ExchangeName)
+    print(previous_date_Open_status)
+
     if(marketOpenStatus == False and DateTimeObj.date() == dateT.date.today()):
         getNextDate = MarketDateAdj(DateTimeObj, 1, ExchangeName)
-        #print(getNextDate.date())
         result = getNextDate
         return generate_graph_now(result, input_data, 380)
-    elif(marketOpenStatus == False and DateTimeObj.date() != dateT.date.today()):
+    elif(marketOpenStatus == False and DateTimeObj.date() != dateT.date.today() and previous_date_Open_status == False):
         getNextDate = MarketDateAdj(DateTimeObj, 1, ExchangeName)
         result = getNextDate
         return generate_graph(result, input_data, 380)
+    elif(marketOpenStatus == False and DateTimeObj.date() != dateT.date.today() and previous_date_Open_status == True):
+        getNextDate = MarketDateAdj(DateTimeObj, 1, ExchangeName)
+        result = getNextDate
+        if(getNextDate.date() > dateT.date.today()):
+            return generate_graph_now(result, input_data, 380)
+        else:
+            return generate_graph(result, input_data, 380)
     else:
         result = DateTimeObj
         return generate_graph(result, input_data, 380)

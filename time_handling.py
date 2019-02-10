@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime, time, timedelta, date
 import pandas_market_calendars as mcal
 from iexfinance.stocks import get_historical_intraday
+import numpy as np
 
 
 def TimeConvert(inDateTime, OutZone):
