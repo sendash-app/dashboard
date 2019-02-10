@@ -141,7 +141,7 @@ def generate_graph_now(input_date, symbol, height):
 
         name='tdate Close',
         textposition='bottom center',
-        line=dict(color='#191A1A'),
+        line=dict(color="rgba(0, 0, 0, 0)"),
     )
 
     plot_dict = {

@@ -108,6 +108,7 @@ app.layout = html.Div([
             [
                 generate_headline_bar("Headlines"),
                 html.Div(id='output-headline')
+
                 #generate_link_table(),
                 # generate_headline_bar("Tweets"),
                 # generate_link_table(),
@@ -186,7 +187,7 @@ app.layout = html.Div([
                 ], className="row borders row-margin-reduce"),
                 html.Div([
                     html.Div([
-                        html.Strong("Probability Score", className="section-title"),
+                        html.Strong("Opening Range Prediction", className="section-title"),
                     ], className="row row-margin-reduce left-div-header-div borders", style={'margin-left':'0px', 'margin-right': '0px'}),
                     html.Div([
                         #generate_sentiment_analysis_piechart()
@@ -230,22 +231,38 @@ app.layout = html.Div([
     Input('input-date', 'value')]
 )
 def update_headline(input_data, input_date):
-    raw = pd.read_csv('./assets/dataset/raw.csv', encoding='utf-8')
-    raw['datetime'] = raw['datetime'].str.replace('EDT', '')
-    raw['datetime'] = raw['datetime'].apply(get_est_dt_object)
-    raw['datetime'].dropna(inplace=True)
+    #raw = pd.read_csv('./assets/dataset/raw.csv', encoding='utf-8')
+    raw = pd.read_csv('https://raw.githubusercontent.com/sendash-app/study_stocks_sentiments/master/dataset/nasdaq/overnight_sentiments.csv', encoding='utf-8')
 
     inputDate = datetime.strptime(input_date, '%Y-%m-%d')
 
-    raw['date'] = raw['datetime'].apply(lambda x: x.date())
-
+    raw = raw.drop(labels='Unnamed: 0', axis=1)
+    raw['date'] = raw['dt'].apply(lambda x: datetime.strptime(x[:-6], '%Y-%m-%d %H:%M:%S').date())
+    raw = raw.dropna(subset=['_sentiment'])
     filter_by_date = raw[raw['date'] == inputDate.date()]
-
     filter_by_stock = filter_by_date[filter_by_date['stockcode'] == input_data]
-
-    headline = filter_by_stock[['headline', 'urls']].copy()
+    headline = filter_by_stock[['date', '_relevance', '_sentiment', 'urls', 'headline']].copy()
+    headline['_sentiment'] = headline['_sentiment'].apply(lambda x: '{0:.2f}'.format(x))
     headline = headline.reset_index()
     headline = headline.drop(labels='index', axis=1)
+
+    # print(headline['_sentiment'].head())
+    # print(headline['_relevance'].head())
+    # raw['datetime'] = raw['datetime'].str.replace('EDT', '')
+    # raw['datetime'] = raw['datetime'].apply(get_est_dt_object)
+    # raw['datetime'].dropna(inplace=True)
+
+    # inputDate = datetime.strptime(input_date, '%Y-%m-%d')
+
+    # raw['date'] = raw['datetime'].apply(lambda x: x.date())
+
+    # filter_by_date = raw[raw['date'] == inputDate.date()]
+
+    # filter_by_stock = filter_by_date[filter_by_date['stockcode'] == input_data]
+
+    # headline = filter_by_stock[['headline', 'urls']].copy()
+    # headline = headline.reset_index()
+    # headline = headline.drop(labels='index', axis=1)
 
     #print(len(headline))
 
