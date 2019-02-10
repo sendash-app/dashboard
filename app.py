@@ -7,7 +7,7 @@ import datetime as dateT
 import plotly.graph_objs as go
 from headlines import generate_headline_bar, generate_link_table
 from quotes import generate_top_bar_logo, generate_pick_stock
-from stock_graph import generate_graph, generate_sentiment_analysis_piechart, generate_graph_now
+from stock_graph import generate_graph, generate_sentiment_analysis_piechart, generate_graph_now, generate_sentiment_analysis_heatmap
 from iexfinance.stocks import Stock
 #from IPython.display import Image
 from time_handling import TimeConvert, IsMarketOpen, days_hours_mins_secs, MarketDateAdj, GetTimeToMktOpen, IsMarketOpen_pd
@@ -23,12 +23,19 @@ import pytz
 # import pandas as pd
 
 import plotly.plotly as py
+import pandas as pd
+
+#import sqlite3
+
 
 app = dash.Dash('SENDASH')
 
 # a config setting for run css and js in locally
 app.css.config.serve_locally = True
 app.scripts.config.serve_locally = True
+
+#conn = sqlite3.connect('stocks.db')
+#c = conn.cursor()
 
 
 # Container Div
@@ -153,7 +160,9 @@ app.layout = html.Div([
                 ], className="row row-margin-reduce left-div-header-div borders"),
                 html.Div([
                     #html.P('5'), html.P('5'), html.P('5'), html.P('5'), html.P('5'),html.P('5'), html.P('5'), html.P('5'), html.P('5'),
-                    generate_sentiment_analysis_piechart()
+                    #generate_sentiment_analysis_piechart()
+                    html.Div(id='output-sentiment-score')
+                    #generate_sentiment_analysis_heatmap(a)
 
                 ], className="row row-margin-reduce")
             ], className="col s2 borders"  # 230px
@@ -212,6 +221,21 @@ app.layout = html.Div([
     ], className="row row-margin-reduce"),
 
 ], className="container bg-color", style={'width': '100%', 'max-width': 50000})
+
+
+@app.callback(
+    Output(component_id='output-sentiment-score', component_property='children'),
+    [Input('input-stock-label', 'value'),
+    Input('input-date', 'value')]
+)
+def update_sentiment_score(input_data, input_date):
+    print(input_data)
+    print(input_date)
+
+
+
+    return generate_sentiment_analysis_heatmap(0.2)
+
 
 # Generate stock price closing graph
 

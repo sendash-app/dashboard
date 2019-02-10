@@ -40,8 +40,8 @@ import numpy as np
 
 
 def generate_graph(input_date, symbol, height):
-    #tdate = datetime(2019, 2, 6)
-    #print(input_date)
+    # tdate = datetime(2019, 2, 6)
+    # print(input_date)
     tdate = datetime(input_date.year, input_date.month, input_date.day)
     tdate_neg1 = MarketDateAdj(tdate, -1, 'NYSE')
 
@@ -114,9 +114,9 @@ def generate_graph(input_date, symbol, height):
 
 
 def generate_graph_now(input_date, symbol, height):
-    #tdate = datetime(2019, 2, 6)
+    # tdate = datetime(2019, 2, 6)
 
-    #print(input_date)
+    # print(input_date)
     tdate = datetime(input_date.year, input_date.month, input_date.day)
     tdate_neg1 = MarketDateAdj(tdate, -1, 'NYSE')
 
@@ -220,6 +220,76 @@ def generate_sentiment_analysis_piechart():
             'plot_bgcolor': "#191A1A",
             'paper_bgcolor': "#232b2b",
             'font': dict(color='#CCCCCC'),
+        }
+    }
+
+    return html.Div([
+        dcc.Graph(
+            figure=fig, config={'displayModeBar': False})
+    ])
+
+
+def generate_sentiment_analysis_heatmap(avg_sentiment_score):
+
+    trace = go.Heatmap(
+        z=[[avg_sentiment_score]],
+        colorscale=[
+            [0, '#a50026'],
+            [0.1, '#d73027'],
+            [0.2, '#f46d43'],
+            [0.3, '#fdae61'],
+            [0.4, '#fee08b'],
+            [0.5, '#ffffbf'],
+            [0.6, '#d9ef8b'],
+            [0.7, '#a6d96a'],
+            [0.8, '#66bd63'],
+            [0.9, '#1a9850'],
+            [1, '#006837']
+        ],
+        zmax=1,
+        zmin=-1)
+
+    axis_template = dict(showgrid=False, showticklabels=False)
+
+    fig = {
+        "data": [trace],
+
+        "layout": {
+            "height": 277,
+            "showlegend": False,
+            "margin": go.layout.Margin(
+                l=10,
+                r=10,
+                b=10,
+                t=10,
+            ),
+            'plot_bgcolor': "#191A1A",
+            'paper_bgcolor': "#232b2b",
+            'font': dict(color='#CCCCCC'),
+            'xaxis': axis_template,
+            'yaxis': axis_template,
+            "annotations": [dict(
+                text=avg_sentiment_score,
+                visible=True,
+                font=dict(color="#ffffff", size=26, family="Balto"),
+                showarrow=False,
+                opacity=1,
+                borderpad=0,
+                borderwidth=0,
+                clicktoshow=False,
+                textangle=0,
+                align="center",
+                captureevents=False,
+                xref="x",
+                x=0,
+                xanchor="auto",
+                xshift=0,
+                yref="y",
+                y=0,
+                yanchor="auto",
+                yshift=0
+
+            )]
         }
     }
 
