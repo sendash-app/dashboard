@@ -274,6 +274,18 @@ def update_headline(input_data, input_date):
     Input('input-date', 'value')]
 )
 def update_sentiment_score(input_data, input_date):
+
+    inputDate = datetime.strptime(input_date, '%Y-%m-%d')
+
+    raw = pd.read_csv('https://raw.githubusercontent.com/sendash-app/study_stocks_sentiments/master/dataset/nasdaq/daily_sentiment.csv', header=None,encoding='utf-8')
+
+    raw = raw.rename(columns={0: "stockcode", 1: "date", 2: "_sentiment"})
+    raw['_sentiment'] = raw['_sentiment'].apply(lambda x: '{0:.3f}'.format(x))
+    raw['date'] = raw['date'].apply(lambda x: datetime.strptime(x, '%Y-%m-%d').date())
+    filter_by_date = raw[raw['date'] == inputDate.date()]
+    filter_by_stock = filter_by_date[filter_by_date['stockcode'] == input_data]
+    filter_by_stock = filter_by_stock.reset_index()
+    filter_by_stock = filter_by_stock.drop(labels='index', axis=1)
     # raw = pd.read_csv('./assets/dataset/raw.csv', encoding='utf-8')
     # raw['datetime'] = raw['datetime'].str.replace('EDT','')
     # raw['datetime'] = raw['datetime'].apply(get_est_dt_object)
@@ -299,7 +311,7 @@ def update_sentiment_score(input_data, input_date):
 
 
 
-    return generate_sentiment_analysis_heatmap(0.2)
+    return generate_sentiment_analysis_heatmap(float(filter_by_stock['_sentiment'][0]))
 
 def get_est_dt_object(x):
     try:

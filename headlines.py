@@ -4,7 +4,29 @@ import dash_html_components as html
 def generate_headline_bar(bar_name):
     html_script = html.Div(
         [
-            html.P(bar_name, className="left-div-header-element"),
+            html.Table(
+                [
+                    html.Tr(
+                        [
+                            html.Td(
+                                html.P(bar_name, className="left-div-header-element"), style={'padding': '0px', 'max-height': '23px'}
+                            ),
+                            html.Td(
+                                html.P("RS", className="left-div-header-element", style={'padding': '0px'}), style={'width': '50px', 'padding': '0px', 'text-align': 'center', 'max-height': '23px'}
+                            ),
+                            html.Td(
+                                html.P("SS", className="left-div-header-element", style={'padding': '0px'}), style={'width': '50px', 'padding': '0px', 'text-align': 'center', 'max-height': '23px'}
+                            )
+                        ]
+                    )
+                ]
+            )
+            # html.Div([
+            # ], className="col s8", style={'padding': '0px'}),
+            # html.Div([
+            # ], className="col s2", style={'padding': '0px'}),
+            # html.Div([
+            # ], className="col s2", style={'padding': '0px'})
         ], className="row left-div-header-div"
     )
     return html_script
@@ -32,9 +54,9 @@ def generate_table_row(df_headline, df_urls, df_s_score, df_r_score):
                 ), style={'padding': '0px', 'border-bottom': '1px solid #777777'}
             ),
             html.Td(
-                html.Strong(df_r_score, style={'padding': '0px', 'color': 'white'}), style={'min-width': '50px', 'padding': '0px', 'text-align': 'center'}),
+                html.Strong(df_r_score, style={'padding': '0px', 'color': 'white'}), style={'width': '50px', 'padding': '0px', 'text-align': 'center'}),
             html.Td(
-                html.Strong(df_s_score, style={'padding': '0px', 'color': cols, 'min-width': '15px'}), style={'min-width': '15px', 'padding': '0px', 'text-align': 'center'})
+                html.Strong(df_s_score, style={'padding': '0px', 'color': cols, 'min-width': '15px'}), style={'width': '15px', 'padding': '0px', 'text-align': 'center'})
         ]
     )
     return tr_script
