@@ -107,7 +107,8 @@ app.layout = html.Div([
         html.Div(
             [
                 generate_headline_bar("Headlines"),
-                generate_link_table(),
+                html.Div(id='output-headline')
+                #generate_link_table(),
                 # generate_headline_bar("Tweets"),
                 # generate_link_table(),
                 #], className="col s3 row-margin-reduce borders", style={'height': '406px'}
@@ -224,18 +225,70 @@ app.layout = html.Div([
 
 
 @app.callback(
+    Output(component_id='output-headline', component_property='children'),
+    [Input('input-stock-label', 'value'),
+    Input('input-date', 'value')]
+)
+def update_headline(input_data, input_date):
+    raw = pd.read_csv('./assets/dataset/raw.csv', encoding='utf-8')
+    raw['datetime'] = raw['datetime'].str.replace('EDT', '')
+    raw['datetime'] = raw['datetime'].apply(get_est_dt_object)
+    raw['datetime'].dropna(inplace=True)
+
+    inputDate = datetime.strptime(input_date, '%Y-%m-%d')
+
+    raw['date'] = raw['datetime'].apply(lambda x: x.date())
+
+    filter_by_date = raw[raw['date'] == inputDate.date()]
+
+    filter_by_stock = filter_by_date[filter_by_date['stockcode'] == input_data]
+
+    headline = filter_by_stock[['headline', 'urls']].copy()
+    headline = headline.reset_index()
+    headline = headline.drop(labels='index', axis=1)
+
+    return generate_link_table(headline)
+
+@app.callback(
     Output(component_id='output-sentiment-score', component_property='children'),
     [Input('input-stock-label', 'value'),
     Input('input-date', 'value')]
 )
 def update_sentiment_score(input_data, input_date):
-    print(input_data)
-    print(input_date)
+    # raw = pd.read_csv('./assets/dataset/raw.csv', encoding='utf-8')
+    # raw['datetime'] = raw['datetime'].str.replace('EDT','')
+    # raw['datetime'] = raw['datetime'].apply(get_est_dt_object)
+    # raw['datetime'].dropna(inplace=True)
+
+    # inputDate = datetime.strptime(input_date, '%Y-%m-%d')
+
+    # raw['date'] = raw['datetime'].apply(lambda x: x.date())
+
+    # filter_by_date = raw[raw['date'] == inputDate.date()]
+
+    # filter_by_stock = filter_by_date[filter_by_date['stockcode'] == input_data]
+
+    # headline_list = filter_by_stock['headline'].tolist()
+    # url_list = filter_by_stock['urls'].tolist()
+
+    # print(headline_list)
+    # print(url_list)
+
+    #print(a['datetime'].head())
+    #print(input_data)
+    #print(datetime.input_date)
 
 
 
     return generate_sentiment_analysis_heatmap(0.2)
 
+def get_est_dt_object(x):
+    try:
+        ts = pytz.timezone('EST')
+        x = ts.localize(datetime.strptime(str(x), '%B %d, %Y, %I:%M:%S %p '))
+    except:
+        x = None
+    return x
 
 # Generate stock price closing graph
 
