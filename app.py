@@ -247,6 +247,8 @@ def update_headline(input_data, input_date):
     headline = headline.reset_index()
     headline = headline.drop(labels='index', axis=1)
 
+    #print(len(headline))
+
     return generate_link_table(headline)
 
 @app.callback(
