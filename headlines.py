@@ -33,7 +33,7 @@ def generate_headline_bar(bar_name):
 
 
 def generate_table_row(df_headline, df_urls, df_s_score, df_r_score):
-    print(type(df_s_score))
+    #print(type(df_s_score))
 
     if(float(df_s_score) > 0):
         cols = '#45df7e'
@@ -74,7 +74,7 @@ def generate_table_row_no_news():
 
 
 def generate_link_table(df):
-    print(len(df))
+    #print(len(df))
     if(len(df) == 0):
         html_script = html.Div(
             [

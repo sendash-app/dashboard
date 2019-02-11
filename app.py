@@ -8,7 +8,7 @@ import plotly.graph_objs as go
 from headlines import generate_headline_bar, generate_link_table
 from quotes import generate_top_bar_logo, generate_pick_stock
 from stock_graph import generate_graph, generate_sentiment_analysis_piechart, generate_graph_now, generate_sentiment_analysis_heatmap
-from iexfinance.stocks import Stock
+from iexfinance.stocks import Stock, get_historical_intraday
 #from IPython.display import Image
 from time_handling import TimeConvert, IsMarketOpen, days_hours_mins_secs, MarketDateAdj, GetTimeToMktOpen, IsMarketOpen_pd
 from convert_image_to_square import make_square
@@ -120,7 +120,8 @@ app.layout = html.Div([
         html.Div(
             [
                 #dcc.Input(id='input-date', value=dateT.datetime.today(), type='datetime-local', max=dateT.datetime.today(), style={'color':'white'}),
-                dcc.Input(id='input-date', value=dateT.datetime.today().date(), type='date', max=dateT.date.today(), style={'color':'white'}),
+                #dcc.Input(id='input-date', value=dateT.datetime.today().date(), type='date', max=dateT.date.today(), style={'color':'white'}),
+                dcc.Input(id='input-date', value=TimeConvert(dateT.datetime.utcnow().replace(tzinfo=pytz.timezone('UTC')), 'EST').date(), type='date', max=TimeConvert(dateT.datetime.utcnow().replace(tzinfo=pytz.timezone('UTC')), 'EST').date(), style={'color':'white'}),
 
                 html.Div(children=[
                     html.Div(id='output-stock-price-graph')
@@ -287,7 +288,7 @@ def update_sentiment_score(input_data, input_date):
     filter_by_stock = filter_by_stock.reset_index()
     filter_by_stock = filter_by_stock.drop(labels='index', axis=1)
 
-    print(filter_by_stock['_sentiment'])
+    #print(filter_by_stock['_sentiment'])
 
 
     if(len(filter_by_stock) == 0):
@@ -340,41 +341,210 @@ def get_est_dt_object(x):
     Input('input-date', 'value')]
 )
 def update_graph(input_data, input_date):
-    #print(input_date)
-    DateTimeObj = datetime.strptime(input_date, "%Y-%m-%d") + dateT.timedelta(hours=9, minutes=30)
-    #print(type(input_date))
+
     ExchangeName = 'NYSE'
+    #print(input_date)
+    DateTimeObj = datetime.strptime(input_date, "%Y-%m-%d") + dateT.timedelta(hours=9, minutes=31)
+    DateTimeObj = DateTimeObj.replace(tzinfo=pytz.timezone('EST'))
+    print("DateTimeObj")
+    print(DateTimeObj)
+
+    inputDate_openStatus = IsMarketOpen_pd(DateTimeObj, ExchangeName)
+    print("market open status")
+    print(inputDate_openStatus)
+
+    actual_datetime = datetime.strptime(str(dateT.datetime.utcnow())[:-16],'%Y-%m-%d').replace(tzinfo=pytz.timezone('UTC'))
+    actual_datetime_est = TimeConvert(actual_datetime, 'EST')
+
+    actual_openStatus = IsMarketOpen_pd(actual_datetime_est, ExchangeName)
+    print("actual market open status")
+    print(actual_openStatus)
+    # actual_datetime_market_status = IsMarketOpen_pd(actual_datetime_est, ExchangeName)
+    # print("actual_datetime_market_status")
+    # print(actual_datetime_market_status)
+
+    #print(type(input_date))
+
     #DateTimeObj = datetime.strptime(input_date, '%d/%m/%YT%H:%M %S')
     #print(DateTimeObj.date())
     #print(dateT.date.today())
-    marketOpenStatus = IsMarketOpen_pd(DateTimeObj, ExchangeName)
-    print("market open status")
-    print(marketOpenStatus)
+    previous_trading_date = MarketDateAdj(DateTimeObj, -1, ExchangeName)
+    previous_trading_date = previous_trading_date + dateT.timedelta(hours=9, minutes=31)
+    #previous_date_Open_status = IsMarketOpen_pd(previous_date, ExchangeName)
+    print("previsous trading date")
+    print(previous_trading_date)
 
-    previous_date = DateTimeObj - dateT.timedelta(days=1)
+    next_trading_date = MarketDateAdj(DateTimeObj, 1, ExchangeName)
+    next_trading_date = next_trading_date + dateT.timedelta(hours=9, minutes=31)
+    print("next trading date")
+    print(previous_trading_date)
 
-    previous_date_Open_status = IsMarketOpen_pd(previous_date, ExchangeName)
-    print("previsous date open status")
-    print(previous_date_Open_status)
 
-    if(marketOpenStatus == False and DateTimeObj.date() == dateT.date.today()):
-        getNextDate = MarketDateAdj(DateTimeObj, 1, ExchangeName)
-        result = getNextDate
-        return generate_graph_now(result, input_data, 380)
-    elif(marketOpenStatus == False and DateTimeObj.date() != dateT.date.today() and previous_date_Open_status == False):
-        getNextDate = MarketDateAdj(DateTimeObj, 1, ExchangeName)
-        result = getNextDate
-        return generate_graph(result, input_data, 380)
-    elif(marketOpenStatus == False and DateTimeObj.date() != dateT.date.today() and previous_date_Open_status == True):
-        getNextDate = MarketDateAdj(DateTimeObj, 1, ExchangeName)
-        result = getNextDate
-        if(getNextDate.date() > dateT.date.today()):
-            return generate_graph_now(result, input_data, 380)
+
+    tdate = datetime(DateTimeObj.year, DateTimeObj.month, DateTimeObj.day)
+    tdata = get_historical_intraday(input_data, tdate, output_format='pandas')
+    print("tdata length")
+    print(len(tdata))
+
+    print("dateTimeobj = actual time?")
+    print(DateTimeObj.date() == actual_datetime_est.date())
+
+
+
+
+    if(inputDate_openStatus == True and actual_openStatus == False and DateTimeObj.date() == actual_datetime_est.date()):
+        if(len(tdata) == 0):
+            return generate_graph_now(DateTimeObj, input_data, 380)
         else:
-            return generate_graph(result, input_data, 380)
+            return generate_graph(DateTimeObj, input_data, 380)
+    elif(inputDate_openStatus == False and actual_openStatus == False and DateTimeObj.date() == actual_datetime_est.date()):
+        if(len(tdata) == 0):
+            getNextDate = MarketDateAdj(DateTimeObj, 1, ExchangeName)
+            result = getNextDate
+            return generate_graph_now(result, input_data, 380)
+    elif(inputDate_openStatus == True and actual_openStatus == False and DateTimeObj.date() != actual_datetime_est.date()):
+        if(len(tdata) == 0):
+            return generate_graph_now(DateTimeObj, input_data, 380)
+        elif(len(tdata) != 0):
+            return generate_graph(DateTimeObj, input_data, 380)
+
+    elif(inputDate_openStatus == False and actual_openStatus == False and DateTimeObj.date() != actual_datetime_est.date()):
+        if(len(tdata) == 0):
+            getNextDate = MarketDateAdj(DateTimeObj, 1, ExchangeName)
+            if(getNextDate.date() > actual_datetime_est.date()):
+                result = getNextDate
+                return generate_graph_now(result, input_data, 380)
+            else:
+                result = getNextDate
+                return generate_graph(result, input_data, 380)
+        # elif(len(tdata) == 0 and next_trading_date.date() < DateTimeObj.date()):
+        #     getNextDate = MarketDateAdj(DateTimeObj, 1, ExchangeName)
+        #     result = getNextDate
+        #     return generate_graph(result, input_data, 380)
+
+
+    #     getNextDate = MarketDateAdj(DateTimeObj, 1, ExchangeName)
+    #     result = getNextDate
+    #     return generate_graph_now(result, input_data, 380)
+
+
+    # elif(marketOpenStatus == True and DateTimeObj.date() == actual_datetime_est.date() and actual_openStatus == True):
+    #     getNextDate = MarketDateAdj(DateTimeObj, 1, ExchangeName)
+    #     result = getNextDate
+    #     return generate_graph(result, input_data, 380)
     else:
-        result = DateTimeObj
-        return generate_graph(result, input_data, 380)
+        return []
+
+
+    # case 1 - sunday
+    # DateTimeObj.date() = 2019-02-10, time = 09:31, status = close
+    # marketOpenStatus = False
+    # actual_datetime_est.date() = 2019-02-10, time = 23:31, status  = close, data = no
+    # actual_openStatus = False
+
+    # Next trading is 2019-02-11
+    # getNextDate function
+    # graph now 2019-02-08 | 2019-02-11
+
+
+
+    # case 2 - monday with not yet start the stock trade
+    # DateTimeObj.date() = 2019-02-11, time = 09:31, status = open
+    # marketOpenStatus = True
+    # actual_datetime_est.date() = 2019-02-11, time = 08:31, status  = close, data = no
+    # actual_openStatus = False
+
+    # Next trading is 2019-02-11 = today
+    # graph now 2019-02-08 | 2019-02-11
+
+    # case 3 - monday with finish the stock trade
+    # DateTimeObj.date() = 2019-02-11, time = 09:31, status = open
+    # marketOpenStatus = True
+    # actual_datetime_est.date() = 2019-02-11, time = 23:31, status  = close, data = yes
+    # actual_openStatus = False
+
+    # Next trading is 2019-02-11 = today
+    # getNextDate function
+    # graph now 2019-02-11 | 2019-02-12
+
+    # case 4 -
+    # DateTimeObj.date() = 2019-02-11, time = 09:31, status = open
+    # marketOpenStatus = True
+    # actual_datetime_est.date() = 2019-02-11, time = 09:50, status  = open, data = yes
+    # actual_openStatus = True
+
+    # Next trading is 2019-02-11 = today
+    # graph not now 2019-02-08 | 2019-02-11
+
+
+
+
+
+    # case 5
+    # DateTimeObj.date() = 2019-02-09, time = 09:31, status = close
+    # marketOpenStatus = False
+    # actual_datetime_est.date() = 2019-02-10, time = 23:31, status  = close, data = no
+    # actual_openStatus = False
+
+    # Next trading is 2019-02-11 = today
+    # getNextDate function
+    # graph now 2019-02-08 | 2019-02-11
+
+
+    # case 6
+    # DateTimeObj.date() = 2019-02-09, time = 09:31, status = close
+    # marketOpenStatus = False
+    # actual_datetime_est.date() = 2019-02-10, time = 23:31, status  = close, data = yes
+    # actual_openStatus = False
+
+    # Next trading is 2019-02-11 = today
+    # getNextDate function
+    # graph now 2019-02-08 | 2019-02-11
+
+
+
+
+
+    # case 6
+    # DateTimeObj.date() = 2019-02-09, time = 09:31, status = close
+    # marketOpenStatus = False
+    # actual_datetime_est.date() = 2019-02-11, time = 23:31, status  = close
+    # actual_openStatus = False
+
+    # Next trading is 2019-02-11 = today
+    # graph now
+
+    # case 7
+    # DateTimeObj.date() = 2019-02-09, time = 09:31, status = close
+    # marketOpenStatus = False
+    # actual_datetime_est.date() = 2019-02-11, time = 09:31, status  = close
+    # actual_openStatus = False
+
+    # Next trading is 2019-02-11 = today
+    # graph now
+
+
+
+
+
+    # if(marketOpenStatus == False and DateTimeObj.date() == dateT.date.today()):
+    #     getNextDate = MarketDateAdj(DateTimeObj, 1, ExchangeName)
+    #     result = getNextDate
+    #     return generate_graph_now(result, input_data, 380)
+    # elif(marketOpenStatus == False and DateTimeObj.date() != dateT.date.today() and previous_date_Open_status == False):
+    #     getNextDate = MarketDateAdj(DateTimeObj, 1, ExchangeName)
+    #     result = getNextDate
+    #     return generate_graph(result, input_data, 380)
+    # elif(marketOpenStatus == False and DateTimeObj.date() != dateT.date.today() and previous_date_Open_status == True):
+    #     getNextDate = MarketDateAdj(DateTimeObj, 1, ExchangeName)
+    #     result = getNextDate
+    #     if(getNextDate.date() > dateT.date.today()):
+    #         return generate_graph_now(result, input_data, 380)
+    #     else:
+    #         return generate_graph(result, input_data, 380)
+    # else:
+    #     result = DateTimeObj
+    #     return generate_graph(result, input_data, 380)
 
 
 @app.callback(
@@ -667,7 +837,7 @@ def update_stock_logo(input_data):
 
     image = Image.open(urllib.request.urlopen(logo['url']))
     new_image = make_square(image)
-    print(new_image)
+    #print(new_image)
     path = f'./assets/{input_data}.png'
     #new_image.save(path, format="PNG")
     #api = Client('2f8f8da3544e9d704d0081a6ea2aa5fb', '55c4f243a2d9925204714ff7202c404c2653d779')
@@ -696,8 +866,6 @@ def update_stock_logo(input_data):
     Output(component_id='output-time-clock', component_property='children'),
     [Input(component_id='input-time-clock', component_property='n_intervals')]
 )
-
-
 def update_time_clock(input_data):
     exchange = 'NYSE'
     MktTimeDict = GetTimeToMktOpen( datetime.now(pytz.utc), exchange)

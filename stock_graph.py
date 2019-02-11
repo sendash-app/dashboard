@@ -152,7 +152,7 @@ def generate_graph_now(input_date, symbol, height):
     date_list = []
 
     for i, idate in enumerate(plot_dict):
-        print(idate)
+        # print(idate)
         date_list.append(idate)
 
     fig = tools.make_subplots(rows=1, cols=2, specs=[[{}, {}]], subplot_titles=(f'{symbol} | {date_list[0].strftime("%a, %d %b %y")}', f'{symbol} | {date_list[1].strftime("%a, %d %b %y")}'), shared_yaxes=True, )
