@@ -286,6 +286,16 @@ def update_sentiment_score(input_data, input_date):
     filter_by_stock = filter_by_date[filter_by_date['stockcode'] == input_data]
     filter_by_stock = filter_by_stock.reset_index()
     filter_by_stock = filter_by_stock.drop(labels='index', axis=1)
+
+    print(filter_by_stock['_sentiment'])
+
+
+    if(len(filter_by_stock) == 0):
+        #print("is empty")
+        sentiment_val = 0.0
+    else:
+        sentiment_val = float(filter_by_stock['_sentiment'][0])
+
     # raw = pd.read_csv('./assets/dataset/raw.csv', encoding='utf-8')
     # raw['datetime'] = raw['datetime'].str.replace('EDT','')
     # raw['datetime'] = raw['datetime'].apply(get_est_dt_object)
@@ -311,7 +321,7 @@ def update_sentiment_score(input_data, input_date):
 
 
 
-    return generate_sentiment_analysis_heatmap(float(filter_by_stock['_sentiment'][0]))
+    return generate_sentiment_analysis_heatmap(sentiment_val)
 
 def get_est_dt_object(x):
     try:
@@ -338,11 +348,13 @@ def update_graph(input_data, input_date):
     #print(DateTimeObj.date())
     #print(dateT.date.today())
     marketOpenStatus = IsMarketOpen_pd(DateTimeObj, ExchangeName)
+    print("market open status")
     print(marketOpenStatus)
 
     previous_date = DateTimeObj - dateT.timedelta(days=1)
 
     previous_date_Open_status = IsMarketOpen_pd(previous_date, ExchangeName)
+    print("previsous date open status")
     print(previous_date_Open_status)
 
     if(marketOpenStatus == False and DateTimeObj.date() == dateT.date.today()):
