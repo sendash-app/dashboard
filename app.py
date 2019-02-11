@@ -7,12 +7,14 @@ import datetime as dateT
 import plotly.graph_objs as go
 from headlines import generate_headline_bar, generate_link_table
 from quotes import generate_top_bar_logo, generate_pick_stock
-from stock_graph import generate_graph, generate_sentiment_analysis_piechart, generate_graph_now, generate_sentiment_analysis_heatmap
+from stock_graph import generate_graph, generate_graph_now, generate_sentiment_analysis_heatmap, generate_open_range_prediction
 from iexfinance.stocks import Stock, get_historical_intraday
 #from IPython.display import Image
 from time_handling import TimeConvert, IsMarketOpen, days_hours_mins_secs, MarketDateAdj, GetTimeToMktOpen, IsMarketOpen_pd
 from convert_image_to_square import make_square
 from bid_ask import PrintBidAsk
+# our own util functions
+import mkt_dt_utils as dtutils
 
 from PIL import Image
 import urllib.request
@@ -24,6 +26,14 @@ import pytz
 
 import plotly.plotly as py
 import pandas as pd
+
+from scipy import stats
+import numpy as np
+from functools import reduce
+
+
+
+
 
 #import sqlite3
 
@@ -191,10 +201,12 @@ app.layout = html.Div([
                         html.Strong("Opening Range Prediction", className="section-title"),
                     ], className="row row-margin-reduce left-div-header-div borders", style={'margin-left':'0px', 'margin-right': '0px'}),
                     html.Div([
+                        html.Div(id='output-range-prediction')
+                        #generate_open_range_prediction(e_p, e_std)
                         #generate_sentiment_analysis_piechart()
                         #html.P('5'), html.P('5'), html.P('5'), html.P('5'), html.P('5'),html.P('5'), html.P('5'), html.P('5'), html.P('5'),
-                    ], className="row row-margin-reduce")
-                ], className="row borders row-margin-reduce")
+                    ], className="row row-margin-reduce borders")
+                ], className="row borders row-margin-reduce borders")
 
             ], className="col s4 borders"  # 230px
         ),
@@ -226,6 +238,93 @@ app.layout = html.Div([
 ], className="container bg-color", style={'width': '100%', 'max-width': 50000})
 
 
+def GetOpenRange(closePx, returns):
+    '''
+    returns expected open price and std * closePx
+    '''
+    r_mean = np.mean(returns)
+    r_std = np.std(returns)
+
+    e_px = np.exp(r_mean) * closePx
+    e_std = (np.exp(r_mean + r_std) -1 ) * closePx
+    return e_px, e_std
+
+def GetReturnsYHF(yhoo_data, l_symbols, overnight = False):
+    data = yhoo_data.stack()
+    #print(data)
+    data.reset_index(inplace = True)
+
+    l_col_to_keep = ['Date', 'Symbols', 'Adj Close','Open', 'Volume']
+    r_dfs = []
+
+    # 1
+    for sym in l_symbols:
+        r_df = data[ data.Symbols == sym ].loc[:, l_col_to_keep]
+        r_df = r_df.set_index('Date')
+
+        r_df[f'r({sym})'] = r_df['Adj Close']/ r_df['Adj Close'].shift(1) - 1
+        # or just do df.pct_change()
+        if overnight:
+            r_df[f'r({sym})'] = r_df['Open']/ r_df['Adj Close'].shift(1) - 1
+
+        r_dfs.append( r_df.iloc[1:,:])
+
+    # 2
+    df = reduce( lambda x, y : pd.concat([x,y], axis =1),
+                [ r_df.iloc[:,-1] for r_df in r_dfs ]
+               )
+
+    #df.sort_values(by = 'Date',ascending = False).head(3)
+
+    return df
+
+
+def GetBeta( r_sym , r_benchmark):
+    slope, intercept, r_value, p_value, std_err = stats.linregress( r_sym, r_benchmark)
+    return slope
+
+
+
+def GetAlpha( r_sym , r_benchmark):
+    beta = GetBeta( r_sym, r_benchmark)
+    return r_sym - beta * r_benchmark
+
+
+
+@app.callback(
+    Output(component_id='output-range-prediction', component_property='children'),
+    [Input('input-stock-label', 'value')]
+)
+def function(input_data):#, input_date):
+
+    l_symbols = ['FB', 'GOOGL', 'AMZN', 'NFLX', 'QQQ', 'SPY']
+
+    edate = datetime(2019,2,8)
+    sdate = dtutils.MarketDateAdj(edate, -100, 'NYSE')
+    yhoo_data = web.DataReader([input_data], 'yahoo', sdate, edate)
+
+    df_overnight_r = GetReturnsYHF(yhoo_data, l_symbols, overnight=True)
+    df_returns = GetReturnsYHF(yhoo_data, l_symbols)
+
+
+
+
+
+    price = Stock(input_data)
+    px_close = price.get_price()
+
+    e_p, e_std = GetOpenRange(px_close, df_overnight_r[f'r({input_data})'])
+    e_p, e_std = round(e_p,2), round(e_std,2)
+
+
+    # print(f'FB closed at {px_close}')
+    # print(f'--- Expected Open Range ---')
+    # print(f'68%: {"{:.2f}".format(e_p - e_std)} - {"{:.2f}".format(e_p + e_std)}')
+    # print(f'95%: {"{:.2f}".format(e_p - 2 * e_std)} - {"{:.2f}".format(e_p + 2 * e_std)}')
+    # print(f'99.7%: {"{:.2f}".format(e_p - 3 * e_std)} - {"{:.2f}".format(e_p + 3 * e_std)}')
+    return generate_open_range_prediction(e_p, e_std, px_close)
+
+
 @app.callback(
     Output(component_id='output-headline', component_property='children'),
     [Input('input-stock-label', 'value'),
@@ -244,6 +343,7 @@ def update_headline(input_data, input_date):
     filter_by_stock = filter_by_date[filter_by_date['stockcode'] == input_data]
     headline = filter_by_stock[['date', '_relevance', '_sentiment', 'urls', 'headline']].copy()
     headline['_sentiment'] = headline['_sentiment'].apply(lambda x: '{0:.2f}'.format(x))
+    headline = headline.sort_values(by="_relevance", ascending=False)
     headline = headline.reset_index()
     headline = headline.drop(labels='index', axis=1)
 
@@ -278,12 +378,14 @@ def update_sentiment_score(input_data, input_date):
 
     inputDate = datetime.strptime(input_date, '%Y-%m-%d')
 
-    raw = pd.read_csv('https://raw.githubusercontent.com/sendash-app/study_stocks_sentiments/master/dataset/nasdaq/daily_sentiment.csv', header=None,encoding='utf-8')
+    raw = pd.read_csv('https://raw.githubusercontent.com/sendash-app/study_stocks_sentiments/master/dataset/nasdaq/daily_sentiment.csv', header=0,encoding='utf-8')
 
-    raw = raw.rename(columns={0: "stockcode", 1: "date", 2: "_sentiment"})
-    raw['_sentiment'] = raw['_sentiment'].apply(lambda x: '{0:.3f}'.format(x))
-    raw['date'] = raw['date'].apply(lambda x: datetime.strptime(x, '%Y-%m-%d').date())
-    filter_by_date = raw[raw['date'] == inputDate.date()]
+    #raw = raw.rename(columns={0: "stockcode", 1: "date", 2: "_sentiment"})
+    #print(raw['_sentiment'])
+    raw['sentiment_score'] = raw['sentiment_score'].apply(lambda x: '{0:.3f}'.format(x))
+
+    raw['trade_date'] = raw['trade_date'].apply(lambda x: datetime.strptime(x, '%Y-%m-%d').date())
+    filter_by_date = raw[raw['trade_date'] == inputDate.date()]
     filter_by_stock = filter_by_date[filter_by_date['stockcode'] == input_data]
     filter_by_stock = filter_by_stock.reset_index()
     filter_by_stock = filter_by_stock.drop(labels='index', axis=1)
@@ -295,7 +397,10 @@ def update_sentiment_score(input_data, input_date):
         #print("is empty")
         sentiment_val = 0.0
     else:
-        sentiment_val = float(filter_by_stock['_sentiment'][0])
+        if(filter_by_stock['sentiment_score'][0] == 'nan'):
+            sentiment_val = 0.0
+        else:
+            sentiment_val = float(filter_by_stock['sentiment_score'][0])
 
     # raw = pd.read_csv('./assets/dataset/raw.csv', encoding='utf-8')
     # raw['datetime'] = raw['datetime'].str.replace('EDT','')
@@ -319,6 +424,7 @@ def update_sentiment_score(input_data, input_date):
     #print(a['datetime'].head())
     #print(input_data)
     #print(datetime.input_date)
+    print(sentiment_val)
 
 
 
@@ -353,9 +459,10 @@ def update_graph(input_data, input_date):
     print("market open status")
     print(inputDate_openStatus)
 
-    actual_datetime = datetime.strptime(str(dateT.datetime.utcnow())[:-16],'%Y-%m-%d').replace(tzinfo=pytz.timezone('UTC'))
+    actual_datetime = datetime.strptime(str(dateT.datetime.utcnow())[:-10],'%Y-%m-%d %H:%M').replace(tzinfo=pytz.timezone('UTC'))
     actual_datetime_est = TimeConvert(actual_datetime, 'EST')
-
+    print("actual est time")
+    print(actual_datetime_est)
     actual_openStatus = IsMarketOpen_pd(actual_datetime_est, ExchangeName)
     print("actual market open status")
     print(actual_openStatus)
@@ -380,6 +487,10 @@ def update_graph(input_data, input_date):
     print(previous_trading_date)
 
 
+    actual_tdate = datetime(actual_datetime_est.year, actual_datetime_est.month, actual_datetime_est.day)
+    actual_tdata = get_historical_intraday(input_data, actual_tdate, output_format='pandas')
+    print("actual tdata length")
+    print(len(actual_tdata))
 
     tdate = datetime(DateTimeObj.year, DateTimeObj.month, DateTimeObj.day)
     tdata = get_historical_intraday(input_data, tdate, output_format='pandas')
@@ -392,31 +503,56 @@ def update_graph(input_data, input_date):
 
 
 
-    if(inputDate_openStatus == True and actual_openStatus == False and DateTimeObj.date() == actual_datetime_est.date()):
-        if(len(tdata) == 0):
+    # if(inputDate_openStatus == True and actual_openStatus == False and DateTimeObj.date() == actual_datetime_est.date()):
+    #     if(len(tdata) == 0):
+    #         return generate_graph_now(DateTimeObj, input_data, 380)
+    #     else:
+    #         return generate_graph(DateTimeObj, input_data, 380)
+    # elif(inputDate_openStatus == False and actual_openStatus == False and DateTimeObj.date() == actual_datetime_est.date()):
+    #     if(len(tdata) == 0):
+    #         getNextDate = MarketDateAdj(DateTimeObj, 1, ExchangeName)
+    #         result = getNextDate
+    #         return generate_graph_now(result, input_data, 380)
+    # elif(inputDate_openStatus == True and actual_openStatus == False and DateTimeObj.date() != actual_datetime_est.date()):
+    #     if(len(tdata) == 0):
+    #         return generate_graph_now(DateTimeObj, input_data, 380)
+    #     elif(len(tdata) != 0):
+    #         return generate_graph(DateTimeObj, input_data, 380)
+
+    # elif(inputDate_openStatus == False and actual_openStatus == False and DateTimeObj.date() != actual_datetime_est.date()):
+    #     if(len(tdata) == 0):
+    #         getNextDate = MarketDateAdj(DateTimeObj, 1, ExchangeName)
+    #         if(getNextDate.date() > actual_datetime_est.date()):
+    #             # print(getNextDate.date())
+    #             # print(actual_datetime_est.date())
+    #             result = getNextDate
+    #             return generate_graph_now(result, input_data, 380)
+    #         else:
+    #             result = getNextDate
+    #             return generate_graph(result, input_data, 380)
+    if(inputDate_openStatus == True and actual_openStatus == True and DateTimeObj.date() == actual_datetime_est.date()):
+        if(len(actual_tdata) == 0):
             return generate_graph_now(DateTimeObj, input_data, 380)
-        else:
+        elif(len(actual_tdata) != 0):
             return generate_graph(DateTimeObj, input_data, 380)
-    elif(inputDate_openStatus == False and actual_openStatus == False and DateTimeObj.date() == actual_datetime_est.date()):
-        if(len(tdata) == 0):
-            getNextDate = MarketDateAdj(DateTimeObj, 1, ExchangeName)
+    elif(inputDate_openStatus == False and actual_openStatus == True and DateTimeObj.date() != actual_datetime_est.date()):
+        getNextDate = MarketDateAdj(DateTimeObj, 1, ExchangeName)
+        if(len(actual_tdata) == 0):
             result = getNextDate
             return generate_graph_now(result, input_data, 380)
-    elif(inputDate_openStatus == True and actual_openStatus == False and DateTimeObj.date() != actual_datetime_est.date()):
-        if(len(tdata) == 0):
+        elif(len(actual_tdata) != 0):
+            result = getNextDate
+            return generate_graph(result, input_data, 380)
+    elif(inputDate_openStatus == True and actual_openStatus == True and DateTimeObj.date() != actual_datetime_est.date()):
+        if(len(actual_tdata) == 0):
+            #result = getNextDate
             return generate_graph_now(DateTimeObj, input_data, 380)
-        elif(len(tdata) != 0):
+        elif(len(actual_tdata) != 0):
+            #result = getNextDate
             return generate_graph(DateTimeObj, input_data, 380)
 
-    elif(inputDate_openStatus == False and actual_openStatus == False and DateTimeObj.date() != actual_datetime_est.date()):
-        if(len(tdata) == 0):
-            getNextDate = MarketDateAdj(DateTimeObj, 1, ExchangeName)
-            if(getNextDate.date() > actual_datetime_est.date()):
-                result = getNextDate
-                return generate_graph_now(result, input_data, 380)
-            else:
-                result = getNextDate
-                return generate_graph(result, input_data, 380)
+    # todo logic of actual market close
+
         # elif(len(tdata) == 0 and next_trading_date.date() < DateTimeObj.date()):
         #     getNextDate = MarketDateAdj(DateTimeObj, 1, ExchangeName)
         #     result = getNextDate
@@ -963,4 +1099,4 @@ def assets_file(path):
     return send_from_directory(assets_folder, path)
 
 if __name__ == '__main__':
-    app.run_server(debug=True, processes=4)
+    app.run_server(debug=True, processes=10)

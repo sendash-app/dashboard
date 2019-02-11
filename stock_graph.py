@@ -8,6 +8,9 @@ from iexfinance.stocks import get_historical_intraday
 import pandas as pd
 from time_handling import MarketDateAdj
 import numpy as np
+from scipy.stats import norm
+from plotly.graph_objs import *
+
 
 # def generate_graph(x, y, height, title, id_name, graph_type):
 #     return dcc.Graph(
@@ -292,6 +295,132 @@ def generate_sentiment_analysis_heatmap(avg_sentiment_score):
             )]
         }
     }
+
+    return html.Div([
+        dcc.Graph(
+            figure=fig, config={'displayModeBar': False})
+    ])
+
+
+def generate_open_range_prediction(e_p, e_std, px_close):
+
+    # x_axis = np.arange(e_p - 3 * e_std,e_p + 3 * e_std, 0.1)
+    # # Mean = 0, SD = 2.
+    # plt.plot(x_axis, norm.pdf(x_axis,e_p, e_std))
+
+    x_axis = np.arange(e_p - 3 * e_std, e_p + 3 * e_std, 0.1)
+    x_axis2 = np.arange(e_p - 3 * e_std, e_p - 2 * e_std, 0.1)
+    x_axis3 = np.arange(e_p - 2 * e_std, e_p - 1 * e_std, 0.1)
+    x_axis4 = np.arange(e_p + 1 * e_std, e_p + 2 * e_std, 0.1)
+    x_axis5 = np.arange(e_p + 2 * e_std, e_p + 3 * e_std, 0.1)
+
+    height = int(len(x_axis) / 2)
+
+    y_axis_height = norm.pdf(x_axis, e_p, e_std)[height]
+
+    trace1 = {
+        "x": x_axis,
+        "y": norm.pdf(x_axis, e_p, e_std),
+        "name": "Normal distribution",
+        "type": "scatter",
+    }
+    trace2 = {
+        "x": x_axis2,
+        "y": norm.pdf(x_axis2, e_p, e_std),
+        "fill": "tozeroy",
+        "name": "-3 STDEV.",
+        "type": "scatter",
+        "fillcolor": '#006837',
+        'line': dict(
+            color='#006837'
+        ),
+    }
+    trace3 = {
+        "x": x_axis3,
+        "y": norm.pdf(x_axis3, e_p, e_std),
+        "fill": "tozeroy",
+        "name": "-2 STDEV",
+        "type": "scatter",
+        "fillcolor": '#45df7e',
+        'line': dict(
+            color='#45df7e'
+        ),
+    }
+    trace4 = {
+        "x": x_axis4,
+        "y": norm.pdf(x_axis4, e_p, e_std),
+        "fill": "tozeroy",
+        "name": "+2 STDEV",
+        "type": "scatter",
+        "fillcolor": '#45df7e',
+        'line': dict(
+            color='#45df7e'
+        ),
+    }
+    trace5 = {
+        "x": x_axis5,
+        "y": norm.pdf(x_axis5, e_p, e_std),
+        "fill": "tozeroy",
+        "name": "+3 STDEV",
+        "type": "scatter",
+        "fillcolor": '#006837',
+        'line': dict(
+            color='#006837'
+        ),
+    }
+
+    trace6 = {
+        "x": [px_close, px_close],
+        "y": [0, y_axis_height],
+        "line": {
+            "color": "white",
+            "dash": "dashdot",
+            "width": 3,
+        },
+        "name": "Latest Closing Price",
+        "type": "scatter",
+        "text": px_close,
+        "textposition": 'top left',
+        "mode": 'lines',
+        "textfont": dict(
+            size=15
+        )
+    }
+
+    trace7 = {
+        "x": [px_close],
+        "y": [y_axis_height],
+        "showlegend": False,
+        "type": "scatter",
+        "text": px_close,
+        "textposition": 'bottom left',
+        "mode": 'text',
+        "textfont": dict(
+            size=20
+        )
+    }
+    axis_template = dict(showticklabels=False)
+
+    fig = {
+        "data": [trace1, trace2, trace3, trace4, trace5, trace6, trace7],
+        "layout": {
+            "yaxis": axis_template,
+            "height": 160,
+            "margin": go.layout.Margin(
+                l=15,
+                r=15,
+                b=25,
+                t=15,
+            ),
+            'plot_bgcolor': "#191A1A",
+            'paper_bgcolor': "#232b2b",
+            'font': dict(color='#CCCCCC'),
+        }
+    }
+    # data = Data([trace1, trace2, trace3])
+    # data = Data([trace1, trace2, trace3, trace4, trace5, trace6, trace7])
+
+    # fig = Figure(data=data)
 
     return html.Div([
         dcc.Graph(
