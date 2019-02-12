@@ -550,6 +550,30 @@ def update_graph(input_data, input_date):
         elif(len(actual_tdata) != 0):
             #result = getNextDate
             return generate_graph(DateTimeObj, input_data, 380)
+    # for actual_openStatus is False
+    elif(inputDate_openStatus == True and actual_openStatus == False and DateTimeObj.date() == actual_datetime_est.date()):
+        if(len(tdata) == 0):
+            #result = getNextDate
+            return generate_graph_now(DateTimeObj, input_data, 380)
+        elif(len(tdata) != 0):
+            #result = getNextDate
+            return generate_graph(DateTimeObj, input_data, 380)
+    elif(inputDate_openStatus == False and actual_openStatus == False and DateTimeObj.date() != actual_datetime_est.date()):
+        getNextDate = MarketDateAdj(DateTimeObj, 1, ExchangeName)
+        if(len(tdata) == 0 and len(actual_tdata) == 0):
+            result = getNextDate
+            return generate_graph_now(result, input_data, 380)
+        else:
+            result = getNextDate
+            return generate_graph(result, input_data, 380)
+    elif(inputDate_openStatus == True and actual_openStatus == False and DateTimeObj.date() != actual_datetime_est.date()):
+        if(len(tdata) == 0 and len(actual_tdata) == 0):
+            # result = getNextDate
+            return generate_graph_now(DateTimeObj, input_data, 380)
+        else:
+            # result = getNextDate
+            return generate_graph(DateTimeObj, input_data, 380)
+
 
     # todo logic of actual market close
 
