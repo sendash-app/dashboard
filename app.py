@@ -33,8 +33,6 @@ from functools import reduce
 
 
 
-
-
 #import sqlite3
 
 
@@ -183,7 +181,7 @@ app.layout = html.Div([
             [
                 #html.P('5'), html.P('5'), html.P('5'), html.P('5'), html.P('5'),
                 html.Div([
-                    html.Strong("Sentiment Analysis Score", className="section-title"),
+                    html.Strong("Overnight Sentiment Score", className="section-title"),
                 ], className="row row-margin-reduce left-div-header-div borders"),
                 html.Div([
                     #html.P('5'), html.P('5'), html.P('5'), html.P('5'), html.P('5'),html.P('5'), html.P('5'), html.P('5'), html.P('5'),
@@ -292,42 +290,87 @@ def GetReturnsYHF(yhoo_data, l_symbols, overnight = False):
 
     return df
 
-def GetBeta( r_sym , r_benchmark):
-    slope, intercept, r_value, p_value, std_err = stats.linregress( r_sym, r_benchmark)
-    return slope
+# def GetBeta( r_sym , r_benchmark):
+#     slope, intercept, r_value, p_value, std_err = stats.linregress( r_sym, r_benchmark)
+#     return slope
 
 
 
-def GetAlpha( r_sym , r_benchmark):
-    beta = GetBeta( r_sym, r_benchmark)
-    return r_sym - beta * r_benchmark
+# def GetAlpha( r_sym , r_benchmark):
+#     beta = GetBeta( r_sym, r_benchmark)
+#     return r_sym - beta * r_benchmark
 
+def PrintSignal(zscore):
+    if(zscore != 0):
+        buysell = 'Higher'
+        if np.sign(zscore) == -1:
+            buysell = 'Lower'
+
+        conf_lvl = 'Low'
+        if abs(zscore)> 1:
+            conf_lvl = 'Moderate'
+        if abs(zscore)> 2:
+            conf_lvl = 'High'
+
+        text = f'Stock should open {buysell} with {conf_lvl} confidence.'
+    else:
+        text = 'No signal.'
+
+    return text
+
+
+def GetOpeningRange(TradeDate, Ticker, NumDays = 100):
+    edate = TradeDate
+    sdate = dtutils.MarketDateAdj(edate, -NumDays, 'NYSE')
+    prev_td = dtutils.MarketDateAdj(edate, -1, 'NYSE')
+    data = web.DataReader( Ticker, 'yahoo', sdate, edate)
+
+    # Exclude TradeDate's data in returns
+    r_df = data[data.index.to_pydatetime() < TradeDate ]
+    r_df['returns'] = r_df['Adj Close']/ r_df['Adj Close'].shift(1) - 1
+    r_df['overnight'] = r_df['Open']/ r_df['Adj Close'].shift(1) - 1
+
+    returns = r_df['overnight']
+    r_mean = np.mean(returns)
+    r_std = np.std(returns)
+
+    closePx = data['Adj Close'][prev_td]
+    openPx = data['Open'][TradeDate]
+    e_px = np.exp(r_mean) * closePx
+    e_std = (np.exp( r_mean + r_std) -1) * closePx
+
+    return {'Expected Px': e_px, 'Std': e_std, 'Actual Open': openPx}
 
 
 @app.callback(
     Output(component_id='output-range-prediction', component_property='children'),
-    [Input('input-stock-label', 'value')]
+    [Input('input-stock-label', 'value'),
+    Input('input-date', 'value')]
 )
-def function(input_data):#, input_date):
+def function(input_data, input_date):
 
-    l_symbols = ['FB', 'GOOGL', 'AMZN', 'NFLX', 'QQQ', 'SPY']
+    inputDate = datetime.strptime(input_date, '%Y-%m-%d')
 
-    edate = datetime(2019,2,8)
-    sdate = dtutils.MarketDateAdj(edate, -100, 'NYSE')
-    yhoo_data = web.DataReader([input_data], 'yahoo', sdate, edate)
+    # open_status = IsMarketOpen_pd(inputDate, 'NYSE')
 
-    df_overnight_r = GetReturnsYHF(yhoo_data, l_symbols, overnight=True)
-    df_returns = GetReturnsYHF(yhoo_data, l_symbols)
+    # if(open_status == True):
 
+    get_opening_range_dict = GetOpeningRange(datetime(inputDate.year, inputDate.month, inputDate.day), input_data)
+    # l_symbols = ['FB', 'GOOGL', 'AMZN', 'NFLX', 'QQQ', 'SPY']
+    print("get opening range dict")
+    print(get_opening_range_dict)
+    # edate = datetime(2019,2,8)
+    # sdate = dtutils.MarketDateAdj(edate, -100, 'NYSE')
+    # yhoo_data = web.DataReader([input_data], 'yahoo', sdate, edate)
 
-
-
+    # df_overnight_r = GetReturnsYHF(yhoo_data, l_symbols, overnight=True)
+    # df_returns = GetReturnsYHF(yhoo_data, l_symbols)
 
     price = Stock(input_data)
     px_close = price.get_price()
 
-    e_p, e_std = GetOpenRange(px_close, df_overnight_r[f'r({input_data})'])
-    e_p, e_std = round(e_p,2), round(e_std,2)
+    # e_p, e_std = GetOpenRange(px_close, df_overnight_r[f'r({input_data})'])
+    e_p, e_std, actual_open = round(get_opening_range_dict['Expected Px'],2), round(get_opening_range_dict['Std'],2), round(get_opening_range_dict['Actual Open'],2)
 
 
     # print(f'FB closed at {px_close}')
@@ -335,7 +378,9 @@ def function(input_data):#, input_date):
     # print(f'68%: {"{:.2f}".format(e_p - e_std)} - {"{:.2f}".format(e_p + e_std)}')
     # print(f'95%: {"{:.2f}".format(e_p - 2 * e_std)} - {"{:.2f}".format(e_p + 2 * e_std)}')
     # print(f'99.7%: {"{:.2f}".format(e_p - 3 * e_std)} - {"{:.2f}".format(e_p + 3 * e_std)}')
-    return generate_open_range_prediction(e_p, e_std, px_close)
+    return generate_open_range_prediction(e_p, e_std, actual_open, e_p)
+    # else:
+    #     return []
 
 
 @app.callback(
@@ -382,6 +427,10 @@ def update_headline(input_data, input_date):
 
     return generate_link_table(headline)
 
+def convertRange(value, r1, r2):
+    return (value - r1[0]) * (r2[1] - r2[0]) / (r1[1] - r1[0]) + r2[0]
+
+
 @app.callback(
     Output(component_id='output-sentiment-score', component_property='children'),
     [Input('input-stock-label', 'value'),
@@ -396,7 +445,8 @@ def update_sentiment_score(input_data, input_date):
     #raw = raw.rename(columns={0: "stockcode", 1: "date", 2: "_sentiment"})
     #print(raw['_sentiment'])
     raw['sentiment_score'] = raw['sentiment_score'].apply(lambda x: '{0:.3f}'.format(x))
-
+    raw['scaled_z_score'] = raw['z_score'].apply(lambda x: convertRange(x, [-3, 3], [-1, 1]))
+    raw['scaled_z_score'] = raw['scaled_z_score'].apply(lambda x: '{0:.3f}'.format(x))
     raw['trade_date'] = raw['trade_date'].apply(lambda x: datetime.strptime(x, '%Y-%m-%d').date())
     filter_by_date = raw[raw['trade_date'] == inputDate.date()]
     filter_by_stock = filter_by_date[filter_by_date['stockcode'] == input_data]
@@ -409,11 +459,16 @@ def update_sentiment_score(input_data, input_date):
     if(len(filter_by_stock) == 0):
         #print("is empty")
         sentiment_val = 0.0
+        zscore = 0.0
     else:
         if(filter_by_stock['sentiment_score'][0] == 'nan'):
             sentiment_val = 0.0
+            zscore = 0.0
         else:
             sentiment_val = float(filter_by_stock['sentiment_score'][0])
+            zscore = float(filter_by_stock['scaled_z_score'][0])
+
+    signal = PrintSignal(zscore)
 
     # raw = pd.read_csv('./assets/dataset/raw.csv', encoding='utf-8')
     # raw['datetime'] = raw['datetime'].str.replace('EDT','')
@@ -437,11 +492,11 @@ def update_sentiment_score(input_data, input_date):
     #print(a['datetime'].head())
     #print(input_data)
     #print(datetime.input_date)
-    print(sentiment_val)
+    #print(sentiment_val)
 
 
 
-    return generate_sentiment_analysis_heatmap(sentiment_val)
+    return generate_sentiment_analysis_heatmap(sentiment_val, zscore, signal)
 
 def get_est_dt_object(x):
     try:
@@ -574,8 +629,13 @@ def update_graph(input_data, input_date):
     elif(inputDate_openStatus == False and actual_openStatus == False and DateTimeObj.date() != actual_datetime_est.date()):
         getNextDate = MarketDateAdj(DateTimeObj, 1, ExchangeName)
         if(len(tdata) == 0 and len(actual_tdata) == 0):
-            result = getNextDate
-            return generate_graph_now(result, input_data, 380)
+            if(getNextDate.date() < actual_datetime_est.date()):
+                result = getNextDate
+                return generate_graph(result, input_data, 380)
+            else:
+                result = getNextDate
+                return generate_graph_now(result, input_data, 380)
+
         else:
             result = getNextDate
             return generate_graph(result, input_data, 380)
@@ -1066,7 +1126,7 @@ def update_time_clock(input_data):
             ], className="col s9"),
         ], className="row borders row-margin-reduce"),
         html.Div([
-            html.Strong(f'{msg} {nextAction}', style={'color':'white', 'font-size':'18px', 'padding-left':'10px'})
+            html.Strong(f'{msg} {nextAction}', style={'color':'white', 'font-size':'18px', 'padding':'10px'})
         ], className="row borders row-margin-reduce")
     ]
 
@@ -1087,7 +1147,7 @@ def update_bid_ask(interval, input_data):
 
 
 
-    print(df)
+    #print(df)
     latest_bid_ask = GetLastBidAsk(df, input_data)
 
     #bid, ask, lastUpdate = PrintBidAsk(book)
@@ -1134,7 +1194,7 @@ def update_bid_ask(interval, input_data):
                 ], className="col s5", style={'text-align':'center', 'padding':'8px 0px'}),
 
             ], className="col s6 borders", style={'float':'center', 'padding':'10px 0px'}),
-        ], className="row row-margin-reduce borders", style={'margin':'0px'}),
+        ], className="row row-margin-reduce borders", style={'margin':'0px 10px'}),
         html.Div([
             html.P(lastUpdate, style={'color':'white', 'padding-left':'15px'})
 

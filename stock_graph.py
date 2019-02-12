@@ -232,10 +232,10 @@ def generate_sentiment_analysis_piechart():
     ])
 
 
-def generate_sentiment_analysis_heatmap(avg_sentiment_score):
+def generate_sentiment_analysis_heatmap(avg_sentiment_score, zscore, signal):
 
     trace = go.Heatmap(
-        z=[[avg_sentiment_score]],
+        z=[[zscore]],
         colorscale=[
             [0, '#a50026'],
             [0.1, '#d73027'],
@@ -258,7 +258,7 @@ def generate_sentiment_analysis_heatmap(avg_sentiment_score):
         "data": [trace],
 
         "layout": {
-            "height": 277,
+            "height": 220,
             "showlegend": False,
             "margin": go.layout.Margin(
                 l=10,
@@ -272,7 +272,7 @@ def generate_sentiment_analysis_heatmap(avg_sentiment_score):
             'xaxis': axis_template,
             'yaxis': axis_template,
             "annotations": [dict(
-                text=avg_sentiment_score,
+                text=zscore,
                 visible=True,
                 font=dict(color="#FFFFFF", size=26, family="Balto"),
                 showarrow=False,
@@ -296,13 +296,17 @@ def generate_sentiment_analysis_heatmap(avg_sentiment_score):
         }
     }
 
-    return html.Div([
-        dcc.Graph(
-            figure=fig, config={'displayModeBar': False})
-    ])
+    return [
+        html.Div([
+            html.Strong(f'Signal: {signal}', style={'color': 'white'})
+        ], className="row row-margin-reduce", style={'height': '57px', 'margin': '0px', 'padding-left': '10px'}),
+        html.Div([
+            dcc.Graph(figure=fig, config={'displayModeBar': False})
+        ], className="row borders row-margin-reduce", style={'margin': '0px'})
+    ]
 
 
-def generate_open_range_prediction(e_p, e_std, px_close):
+def generate_open_range_prediction(e_p, e_std, actual_open, px_close):
 
     # x_axis = np.arange(e_p - 3 * e_std,e_p + 3 * e_std, 0.1)
     # # Mean = 0, SD = 2.
@@ -321,6 +325,7 @@ def generate_open_range_prediction(e_p, e_std, px_close):
     trace1 = {
         "x": x_axis,
         "y": norm.pdf(x_axis, e_p, e_std),
+        "showlegend": False,
         "name": "Normal distribution",
         "type": "scatter",
     }
@@ -377,14 +382,14 @@ def generate_open_range_prediction(e_p, e_std, px_close):
             "dash": "dashdot",
             "width": 3,
         },
-        "name": "Latest Closing Price",
+        "name": "Mean",
         "type": "scatter",
-        "text": px_close,
-        "textposition": 'top left',
-        "mode": 'lines',
-        "textfont": dict(
-            size=15
-        )
+        # "text": px_close,
+        # "textposition": 'top left',
+        # "mode": 'lines',
+        # "textfont": dict(
+        #     size=15
+        # )
     }
 
     trace7 = {
@@ -392,17 +397,58 @@ def generate_open_range_prediction(e_p, e_std, px_close):
         "y": [y_axis_height],
         "showlegend": False,
         "type": "scatter",
-        "text": px_close,
-        "textposition": 'bottom left',
+        # "text": px_close,
+        # "textposition": 'bottom left',
+        # "mode": 'text',
+        # "textfont": dict(
+        #     size=20
+        # )
+    }
+
+    if(actual_open > px_close):
+        position = 'bottom right'
+    elif((e_p - 3 * e_std) <= actual_open <= (e_p - 2 * e_std)):
+        position = 'bottom right'
+    elif(actual_open < px_close):
+        position = 'bottom left'
+    elif((e_p + 2 * e_std) <= actual_open <= (e_p + 3 * e_std)):
+        position = 'bottom left'
+
+    trace8 = {
+        "x": [actual_open],
+        "y": [y_axis_height],
+        "showlegend": False,
+        "type": "scatter",
+        "text": actual_open,
+        "textposition": position,
         "mode": 'text',
         "textfont": dict(
             size=20
         )
     }
+
+    trace9 = {
+        "x": [actual_open, actual_open],
+        "y": [0, y_axis_height],
+        "line": {
+            "color": "red",
+            "dash": "dashdot",
+            "width": 3,
+        },
+        "name": "Actual Open",
+        "type": "scatter",
+        "text": actual_open,
+        "textposition": 'top left',
+        "mode": 'lines',
+        "textfont": dict(
+            size=15
+        )
+    }
+
     axis_template = dict(showticklabels=False)
 
     fig = {
-        "data": [trace1, trace2, trace3, trace4, trace5, trace6, trace7],
+        "data": [trace1, trace2, trace3, trace4, trace5, trace6, trace7, trace8, trace9],
         "layout": {
             "yaxis": axis_template,
             "height": 160,
