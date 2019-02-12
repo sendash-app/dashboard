@@ -27,13 +27,13 @@ def generate_headline_bar(bar_name):
             # ], className="col s2", style={'padding': '0px'}),
             # html.Div([
             # ], className="col s2", style={'padding': '0px'})
-        ], className="row left-div-header-div"
+        ], className="row left-div-header-div", style={"margin": '0px'}
     )
     return html_script
 
 
 def generate_table_row(df_headline, df_urls, df_s_score, df_r_score):
-    #print(type(df_s_score))
+    # print(type(df_s_score))
 
     if(float(df_s_score) > 0):
         cols = '#45df7e'
@@ -74,7 +74,7 @@ def generate_table_row_no_news():
 
 
 def generate_link_table(df):
-    #print(len(df))
+    # print(len(df))
     if(len(df) == 0):
         html_script = html.Div(
             [
@@ -84,7 +84,7 @@ def generate_link_table(df):
 
                     ]
                 ),
-            ], className="row borders left-div-link-table-element", style={'overflowY': 'scroll'}
+            ], className="row left-div-link-table-element", style={'overflowY': 'scroll', 'margin': '0px'}
         )
     else:
         html_script = html.Div(
@@ -96,6 +96,6 @@ def generate_link_table(df):
 
                     ]
                 ),
-            ], className="row borders left-div-link-table-element", style={'overflowY': 'scroll'}
+            ], className="row left-div-link-table-element", style={'overflowY': 'scroll', 'margin': '0px'}
         )
     return html_script

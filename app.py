@@ -12,14 +12,14 @@ from iexfinance.stocks import Stock, get_historical_intraday
 #from IPython.display import Image
 from time_handling import TimeConvert, IsMarketOpen, days_hours_mins_secs, MarketDateAdj, GetTimeToMktOpen, IsMarketOpen_pd
 from convert_image_to_square import make_square
-from bid_ask import PrintBidAsk
+from bid_ask import PrintBidAsk, GetLastBidAsk
 # our own util functions
 import mkt_dt_utils as dtutils
 
 from PIL import Image
 import urllib.request
 
-from datetime import datetime#, time
+from datetime import datetime, timedelta
 # import pandas_market_calendars as mcal
 import pytz
 # import pandas as pd
@@ -116,8 +116,15 @@ app.layout = html.Div([
         # Left Panel
         html.Div(
             [
-                generate_headline_bar("Headlines"),
-                html.Div(id='output-headline')
+                html.Div([
+                    generate_headline_bar("Headlines"),
+                    html.Div(id='output-headline')
+                ], className="row row-margin-reduce"),
+
+                html.Div([
+                    html.Strong("RS = Relevance Score | SS = Sentiemnt Score", style={'color':'white'})
+                ], className="row borders row-margin-reduce", style={'height':'30px', 'text-align':'center'}),
+
 
                 #generate_link_table(),
                 # generate_headline_bar("Tweets"),
@@ -131,7 +138,14 @@ app.layout = html.Div([
             [
                 #dcc.Input(id='input-date', value=dateT.datetime.today(), type='datetime-local', max=dateT.datetime.today(), style={'color':'white'}),
                 #dcc.Input(id='input-date', value=dateT.datetime.today().date(), type='date', max=dateT.date.today(), style={'color':'white'}),
-                dcc.Input(id='input-date', value=TimeConvert(dateT.datetime.utcnow().replace(tzinfo=pytz.timezone('UTC')), 'EST').date(), type='date', max=TimeConvert(dateT.datetime.utcnow().replace(tzinfo=pytz.timezone('UTC')), 'EST').date(), style={'color':'white'}),
+                dcc.Input(
+                    id='input-date',
+                    value=TimeConvert(dateT.datetime.utcnow().replace(tzinfo=pytz.timezone('UTC')), 'EST').date(),
+                    type='date',
+                    max=TimeConvert(dateT.datetime.utcnow().replace(tzinfo=pytz.timezone('UTC')), 'EST').date(),
+                    min=TimeConvert(dateT.datetime.utcnow().replace(tzinfo=pytz.timezone('UTC')), 'EST').date() - timedelta(days=90),
+                    style={'color':'black', 'background-color':'white'}
+                    ),
 
                 html.Div(children=[
                     html.Div(id='output-stock-price-graph')
@@ -150,7 +164,7 @@ app.layout = html.Div([
                 html.Div([
                     html.Div([
                         html.Div(id="output-stock-logo"),
-                    ], className="col s2 borders", style={'max-height': '120px', 'padding-top':'5px'}),
+                    ], className="col s2", style={'max-height': '120px', 'padding-top':'5px'}),
 
                     html.Div([
                         html.Div(id="output-key-stats"),
@@ -201,7 +215,7 @@ app.layout = html.Div([
                         html.Strong("Opening Range Prediction", className="section-title"),
                     ], className="row row-margin-reduce left-div-header-div borders", style={'margin-left':'0px', 'margin-right': '0px'}),
                     html.Div([
-                        html.Div(id='output-range-prediction')
+                        html.Div(id='output-range-prediction', style={'padding-left':'10px'})
                         #generate_open_range_prediction(e_p, e_std)
                         #generate_sentiment_analysis_piechart()
                         #html.P('5'), html.P('5'), html.P('5'), html.P('5'), html.P('5'),html.P('5'), html.P('5'), html.P('5'), html.P('5'),
@@ -278,7 +292,6 @@ def GetReturnsYHF(yhoo_data, l_symbols, overnight = False):
 
     return df
 
-
 def GetBeta( r_sym , r_benchmark):
     slope, intercept, r_value, p_value, std_err = stats.linregress( r_sym, r_benchmark)
     return slope
@@ -337,11 +350,11 @@ def update_headline(input_data, input_date):
     inputDate = datetime.strptime(input_date, '%Y-%m-%d')
 
     raw = raw.drop(labels='Unnamed: 0', axis=1)
-    raw['date'] = raw['dt'].apply(lambda x: datetime.strptime(x[:-6], '%Y-%m-%d %H:%M:%S').date())
+    raw['date'] = raw['TradeDate'].apply(lambda x: datetime.strptime(x, '%Y-%m-%d').date())
     raw = raw.dropna(subset=['_sentiment'])
     filter_by_date = raw[raw['date'] == inputDate.date()]
     filter_by_stock = filter_by_date[filter_by_date['stockcode'] == input_data]
-    headline = filter_by_stock[['date', '_relevance', '_sentiment', 'urls', 'headline']].copy()
+    headline = filter_by_stock[['TradeDate', '_relevance', '_sentiment', 'urls', 'headline']].copy()
     headline['_sentiment'] = headline['_sentiment'].apply(lambda x: '{0:.2f}'.format(x))
     headline = headline.sort_values(by="_relevance", ascending=False)
     headline = headline.reset_index()
@@ -782,7 +795,7 @@ def update_key_stats(input_data):
     value_list = []
 
     for key in DisplayDict:
-        key_list.append(f'{DisplayDict[key][0]}:')
+        key_list.append(f'{key}:')
         value_list.append(DisplayDict[key][1].format(stats[DisplayDict[key][0]]))
 
     return [
@@ -1067,7 +1080,19 @@ def update_bid_ask(interval, input_data):
     myStock = Stock(input_data)
     book = myStock.get_book()
 
-    bid, ask, lastUpdate = PrintBidAsk(book)
+
+    df = pd.read_csv("https://raw.githubusercontent.com/sendash-app/study_stocks_sentiments/master/dataset/nasdaq/BidAsk_data.csv", header=0, encoding="utf-8")
+    df.drop(columns=['Unnamed: 0'], inplace=True)
+
+
+
+
+    print(df)
+    latest_bid_ask = GetLastBidAsk(df, input_data)
+
+    #bid, ask, lastUpdate = PrintBidAsk(book)
+    bid, ask, lastUpdate = PrintBidAsk(latest_bid_ask)
+
     # print("bid key")
     # print(list(bid.keys())[0])
     # print("bid value")
