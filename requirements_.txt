@@ -208,7 +208,7 @@ python-resize-image==1.1.18
 pytime==0.2.0
 pytz==2018.9
 PyWavelets==0.5.2
-PyYAML==3.12
+PyYAML==5.4
 pyzmq==17.1.2
 QtAwesome==0.4.4
 qtconsole==4.4.1
