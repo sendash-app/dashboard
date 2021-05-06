@@ -71,7 +71,7 @@ feedparser==5.2.1
 filelock==2.0.13
 Flask==0.12.2
 Flask-Compress==1.4.0
-Flask-Cors==3.0.3
+Flask-Cors==3.0.9
 folium==0.6.0
 frogress==0.9.1
 future==0.17.1
