@@ -114,7 +114,7 @@ jsonschema==2.6.0
 jupyter-client==5.2.3
 jupyter-console==4.1.0
 jupyter-core==4.4.0
-jupyterlab==0.31.5
+jupyterlab==1.2.21
 jupyterlab-launcher==0.10.2
 jupyterthemes==0.19.6
 Keras==2.2.4
