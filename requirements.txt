@@ -8,7 +8,7 @@ pandas-datareader==0.7.0
 iexfinance==0.3.5
 pytz==2018.9
 scipy==1.1.0
-numpy==1.16.0
+numpy==1.22.0
 pandas_market_calendars==0.21.1
 praw==6.1.0
 stem==1.7.1
