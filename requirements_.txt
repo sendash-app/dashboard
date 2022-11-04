@@ -261,7 +261,7 @@ tornado==5.1.1
 torrequest==0.1.0
 tqdm==4.28.1
 traitlets==4.3.2
-Twisted==17.5.0
+Twisted==22.10.0
 typing==3.6.2
 unicodecsv==0.14.1
 Unidecode==1.0.23
